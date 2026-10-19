@@ -1,0 +1,8 @@
+{
+  "appId": "hu.ktomi.tulora",
+  "appName": "Túlóranapló",
+  "webDir": "www",
+  "android": {
+    "adjustMarginsForEdgeToEdge": "force"
+  }
+}

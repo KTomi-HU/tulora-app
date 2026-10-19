@@ -1,0 +1,1250 @@
+<title>Túlóranapló</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Elrendezés: egyoszlopos, telefonra méretezett havi „jelenléti ív”: fent hónap + cél + haladás, alatta a hetek kártyái, naponként egy mezővel. */
+:root {
+  --bg: #f3f4f1;
+  --card: #ffffff;
+  --week-head: #e2e6e0;     /* hetek fejléce: a háttértől jól elkülönülő, kissé sötétebb zöldesszürke */
+  --ink: #1d2327;
+  --muted: #69727a;
+  --faint: #a7afb4;
+  --line: #dde1dd;
+  --accent: #c2410c;        /* blokkolóóra-narancs */
+  --accent-soft: #fbe9df;
+  --done: #1f7a4d;
+  --holiday: #7c3aed;
+  --sat: #34507a;           /* szombat kiemelés: visszafogott sötétkék */
+  --sun: #9b3434;           /* vasárnap kiemelés: visszafogott sötétpiros */
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --card: #1e2427; --week-head: #252d31; --ink: #e8ecea; --muted: #9aa3a6; --faint: #5f6a6e; --line: #2f383b;
+    --accent: #f08a4b; --accent-soft: #3a2519; --done: #5fcf95; --holiday: #b69cff; --sat: #8fa9d6; --sun: #e08c8c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --card: #1e2427; --week-head: #252d31; --ink: #e8ecea; --muted: #9aa3a6; --faint: #5f6a6e; --line: #2f383b;
+  --accent: #f08a4b; --accent-soft: #3a2519; --done: #5fcf95; --holiday: #b69cff; --sat: #8fa9d6; --sun: #e08c8c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 40px;
+}
+.wrap { max-width: 520px; margin: 0 auto; display: grid; gap: 12px; }
+.weeks { display: grid; gap: 12px; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.card { padding: 16px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); }
+.head { display: grid; gap: 14px; }
+.head-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.brand { font-weight: 700; letter-spacing: .02em; cursor: default; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; outline: none; }
+.store { font-size: 11.5px; color: var(--muted); text-align: right; }
+.head-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* Saját téma-kapcsoló: automatikus → világos → sötét */
+.theme-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.theme-btn:hover { color: var(--ink); }
+.theme-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.store.is-local { color: var(--accent); }
+.store.is-device { color: var(--muted); }
+.store.can-backup { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; -webkit-tap-highlight-color: transparent; }
+.bak textarea { width: 100%; min-height: 84px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: 12px/1.4 var(--font-num); resize: vertical; }
+.bak-row { display: flex; gap: 8px; justify-content: flex-end; }
+.notice .bak-row button.ghost, .notice button.ghost { background: none; color: var(--accent); border: 1px solid var(--line); }
+.bak-status { min-height: 1.2em; font-size: 13px !important; color: var(--muted) !important; }
+.pickers { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+select, .goal input {
+  width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+}
+.goal { display: flex; align-items: center; gap: 10px; }
+.goal label { flex: 1; font-weight: 600; }
+.goal label small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.goal input { width: 120px; text-align: right; font-family: var(--font-num); font-size: 17px; }
+.goal-mode { display: inline-grid; grid-template-columns: 1fr 1fr; padding: 2px; margin-top: 6px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+/* Gombok: a magasság a feliratot követi (sortörésnél is), nem fix */
+button { line-height: 1.2; }
+.goal-mode button { min-height: 26px; padding: 4px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.goal-mode button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.goal-derived { font-size: 13px; color: var(--muted); }
+.goal-derived b { color: var(--accent); font-family: var(--font-num); }
+/* Haladás: görgetéskor a képernyő tetejére tapad */
+.progress { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: grid; gap: 6px; padding-block: 12px;
+  transition: border-color .6s ease, box-shadow .6s ease; }
+/* Odatapadva: 1,5 px-es keret a folyamatjelző sáv színével (cél elérésekor zöld), lassan felderengve */
+.progress { --stuck-line: var(--accent); }
+.progress:has(.bar.is-done) { --stuck-line: var(--done); }
+.progress.is-stuck { border-color: var(--stuck-line); box-shadow: inset 0 0 0 .5px var(--stuck-line), 0 6px 18px rgba(0, 0, 0, .14); }
+.progress-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.progress-line .big { font-family: var(--font-num); font-size: 30px; font-weight: 600; line-height: 1; }
+.progress-line .of { color: var(--muted); font-size: 14px; }
+.progress-line .pct { font-family: var(--font-num); font-weight: 600; color: var(--accent); }
+.bar { height: 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--accent); transition: width .25s ease; }
+.bar.is-done i { background: var(--done); }
+.hint { font-size: 13px; color: var(--muted); }
+.hint b { color: var(--ink); font-family: var(--font-num); font-weight: 600; }
+.toggles { display: grid; gap: 8px; }
+.toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.toggle.is-off { opacity: .45; }
+.sat-pick { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.sat-pick select { width: auto; height: auto; min-height: 30px; padding: 2px 6px; margin: 0 2px; font-size: 13px; }
+.switch { position: relative; width: 44px; height: 26px; flex: 0 0 auto; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; border-radius: 999px; background: var(--line); transition: background .15s; pointer-events: none; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(18px); }
+.switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Hetek */
+.week { padding: 0 0 4px; overflow: hidden; }
+.week-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 11px 16px 10px; background: var(--week-head); }
+.week-head h2 { margin: 0; font-size: 14px; }
+.week-head h2 small { font-weight: 400; color: var(--muted); }
+.week-head .sum { font-family: var(--font-num); font-weight: 600; }
+.day { display: grid; grid-template-columns: 58px minmax(0, 1fr) 92px; align-items: center; gap: 10px; padding: 6px 16px; border-top: 1px solid var(--line); }
+.day .dn { line-height: 1.1; }
+.day .dn b { font-family: var(--font-num); font-size: 18px; }
+.day .dn span { margin-left: 4px; font-size: 12px; color: var(--muted); }
+.day .tag { min-width: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.day .tag.is-holiday { color: var(--holiday); }
+.day .tag.is-holiday::before { content: "● "; font-size: 9px; vertical-align: 1px; }
+.day .tag[data-tip] { justify-self: start; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
+/* Buboréktipp a különleges napok feliratához */
+.tip { position: fixed; z-index: 20; max-width: min(300px, calc(100vw - 32px)); padding: 10px 12px; border-radius: 10px; background: var(--ink); color: var(--bg); font-size: 13px; line-height: 1.4; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+.tip b { display: block; margin-bottom: 2px; }
+.day.is-rest .dn b, .day.is-rest .dn span { color: var(--faint); }
+/* Szombat/vasárnap dátumszámára kattintva az összes ilyen nap számjegye színt vált (ki-be) */
+.day[data-dow="6"] .dn, .day[data-dow="0"] .dn { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+html.sat-on .day[data-dow="6"] .dn b, html.sat-on .day[data-dow="6"] .dn span { color: var(--sat); }
+html.sun-on .day[data-dow="0"] .dn b, html.sun-on .day[data-dow="0"] .dn span { color: var(--sun); }
+/* Ünnep-, áthelyezett és jelölt napok: figyelemfelkeltő dátumszám (a szombat/vasárnap színezésnél is ez nyer) */
+#weeks .day.is-special .dn b, #weeks .day.is-special .dn span { color: var(--holiday); }
+#weeks .day.is-special .dn b { font-weight: 700; }
+.day.is-today { background: var(--accent-soft); }
+.day.is-today .tag::after { content: attr(data-today); margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; }
+.day input {
+  width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+  text-align: right; font-family: var(--font-num); font-size: 16px; font-weight: 600;
+}
+.day input::placeholder { color: var(--faint); font-weight: 500; }
+.day input:focus { border-color: var(--accent); outline: none; }
+.day input.has-value { border-color: color-mix(in srgb, var(--done) 45%, var(--line)); }
+/* Nettó becslés */
+.pay { display: grid; gap: 10px; }
+.pay-head { display: grid; gap: 2px; }
+.pay-head h2 { margin: 0; font-size: 15px; }
+.pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pay-box { padding: 10px 12px; border-radius: 10px; background: var(--bg); min-width: 0; }
+.pay-box span { display: block; font-size: 12px; color: var(--muted); }
+.pay-box b { font-family: var(--font-num); font-size: 19px; font-weight: 600; }
+.pay-box small { display: block; font-family: var(--font-num); font-size: 12px; color: var(--done); }
+.pay-box.is-goal b { color: var(--muted); }
+details.settings summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 2px 0; }
+details.settings[open] summary { margin-bottom: 10px; }
+.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.set-grid label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; min-width: 0; }
+.set-grid input { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); text-align: right; font-family: var(--font-num); font-size: 15px; }
+.set-grid select { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 15px; }
+.set-grid label[hidden] { display: none; }
+.set-note { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.foot { font-size: 12px; color: var(--muted); text-align: center; padding: 4px 8px; }
+.foot span { display: block; margin-top: 4px; }
+/* Naptárfigyelő: egyszeri tájékoztató ablak a havi ellenőrzés eredményéről */
+.notice-back { position: fixed; inset: 0; z-index: 30; display: grid; place-items: end center; padding: 16px; background: rgba(10, 14, 16, .45); }
+.notice-back[hidden] { display: none; }
+.notice { width: min(480px, 100%); display: grid; gap: 10px; padding: 18px 18px 14px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 18px 48px rgba(0,0,0,.3); animation: notice-in .22s ease-out; }
+@media (min-width: 560px) { .notice-back { place-items: center; } }
+@keyframes notice-in { from { transform: translateY(16px); opacity: 0; } }
+.notice-kicker { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--holiday); }
+.notice-kicker time { font-family: var(--font-num); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.notice h3 { margin: 0; font-size: 17px; line-height: 1.3; }
+.notice p { margin: 0; font-size: 14px; color: var(--ink); white-space: pre-line; }
+.notice .notice-change { padding: 8px 10px; border-radius: 10px; background: var(--accent-soft); font-size: 13px; }
+.notice button { justify-self: end; min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+/* MOHU visszaváltási számláló: lebegőgomb a jobb alsó sarokban, megnyitva a képernyő alján lebegő panel */
+/* Keret: kék, a kitöltött napok zöld keretének párja; világosban erősebb a kontraszt miatt */
+:root { --mohu-line: color-mix(in srgb, #2a63c4 70%, var(--line)); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --mohu-line: color-mix(in srgb, #5d93e8 55%, var(--line)); } }
+:root[data-theme="dark"] { --mohu-line: color-mix(in srgb, #5d93e8 55%, var(--line)); }
+:root { --mohu-mask: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABpCAQAAADGxuSqAAAWO0lEQVR42u2de5RcRZ3HP/cxk8lkMiEPE8IjmECAPABBJRiICkcRloeCiAYRkRV3FRHUDYiAR/R4VAj4hAMoiLoENAIKCgfwBBECbgIJYQNuSAhhWCAJJCFDHtN9H7V/VN3b3dP3VtXt7szA2blzDpx09733V7/fr371e3zrVw7D+TrvRiAQALi4QAw4yMsBHGJi3PQT+VtBrH7vVD1BPkXeEdPHZjbyMut4kVfpS5/gERPzVrgcXBzC9N9jmMQ+7M0ExtDNCCDGwQWEGrn8r/wkuZLRV38ncFIuorgq1LNiXP7KdQ4/5fwBGmgvG3iep1nCUnpSMURVgxj4y8UhAsDjYGZxGDPZh3G0D9D7P+dzKDEBfhUbnFSWUl5USTrrM+r+TTonnKqhdtPNVI4DdrCM+7mbpwkBDzEocyF5bwdzOIEPM71Km+vVwklH6NTxo8Kz2s+o+7b6dyHtHOhwE58jwhuAAUsjFePQBkDEP/gdC1k/CELwiBHAdM7iVKYqAxEpg0SN4dhVV4TPv8G/IgiUvR6ov4iAEhECwWv8lGmKKc4AmR25lh3LXfQhEASUCQeYBzExAe+BSWwlJhqE10cElBEIdnBTKoRdveDKN3yYv6n5ODisjwmJWYEPcDuC0qAQIcUghbCNKxi1i+eBZP67uCPV+2jQxl1CcJ4k6zDiQSWlIoTVnLLL5oHU/W6upIQgHHCz29/4xDxPJ44c7DUI+gaVoIoQbmE3kFOz5bp/Is8hiCgP8lhDSgg+Iuly8Gjn4UE1QxXCAgTPMafFIvCBLm5AIAZ5rktVKyG4tDLTXWA8K98SIpC2scRZLVsNpOmZxQoEwSAbnoqS/ahWxaQIFr0FbKMkMULwQ+gXyDca6cKXKSEG3fBUzOxl9erlAu1cQ4QgHPRpGhEg+CWeCouasfw+N70F7H5EqJj/Ah/Lnt1yoLO5T0WsIWWCJgQRERISEBASNvCcMoI/4jcxC3xgAotSux8VpD5I/8Im+BCqME8g6GU+Y/K9vCRI+RC/5RUlBlH41SHl9IXVf5H6PCq0GvwBv8G1wAdmsqpqZYssqS9lUC+ICQqrZKSifYFgJd9l33on26mbBzKtOppZHMO+HMn4mpSaPtcT4aUmo5fN9NIHDGMkYxmV/ipMkwGmK6CdBXw6zdwUYX/I+/kjownSxU4/jkpqHWArr/EavUT4dDCWcYxLGRdY0y8QLOUllvF3lqjEY7+RODmWU6Zop/AIu1ulpmJilWJ7hsdZwkrWsSXN/rczmncyjcN5HwfhFRhEQDvzmYdfla+3Y/9HWMjIKvZnM0iOLUao3/WwmMUsZy2bCKq41M2ezOAIjuQQOoAIYREuRnhczbyUqgIVEB+H/XkFYZEpSdb2DVzL7H5k1VvwQ/geq1QqILL0mS8oFBf4wMmUiY1viNIFX7CRGzmaEf0KNa7yoyrXfsxjuVolQ4uIV3A5MKyYGXVxGM1KqzxpkkSYx4R0Bkm77dSIwcNPmTicz7BMhUU2HlGcRI0F2B9ZOdSS+rXMY/dc6iX9Lh6++tTlRB60Cuukcp5dLLB08HB5wMieSGnPZuYpzfHq9CVLuL5i1OdZZzUPQmJeZy8rl9QHPkKZyGrmBgg28Q21PnlWy72bsvJfeAJhFHREQMCRRTJcPvADY1ycGJ5bmZwaraJJ4bFcp4yRWU/vthCADxxJrxX7peH5T6YUpj5RNWjjMgKjogbEvMTutjGNBxxrMblKCDbyqYbIr7ALTuN1C1MUIDjKoEUeMJ1N1oZzA59sgvqEltmsMtJfRvAXuzng4jKOHqMOlRE8yn6pLjSap/GBA1lhnG9lYq7WWlIXmMgaC2HKubuIfZqkPqH/HdxrVNgygvNtROABNxrYIQdwA+0tyVn6wGgeNjAuQHBfGq9nQ0s6+IcV+wME16g0RWsS3Q63GHkWso19TWbIA95HqF0YJfsvT8vXrRnCCB7SMq+M4MFcAUhNtKnsBYQIvtJC6pMa8y/U26Mc3pUR/Mk0B1wcFhtsaBnBN5uwnHnmo4vHc98cUSLmllzyfeDbVuyPCJnbYuoTp2IhglKuACTntO60B3zcwP4Sgu8DbYYBJH5/8mdy8DxgPKtz3i7DsbNyjIYPnKYGb0pz93EyqJhdj5WTVHtqHCb6XVw6eFw7iwMEy2jLd9VdHJZqBRAgWGjUHy9Hxq52GNKHeaNm+Y+qHLkeujMzoy5wAFuNbkNIRInjjOx3c1cG/YLtAnvzmpaOAMHptWrkVD0+4ljuJ8p9TYzLat7DdoVyzCMjBjo5hEOYymhcttHDMyzj1fQ9+RmcE/gzMVENEyIEbZzKXRn3Ojh08TjTCbXWVabATuUe2qpyPFmaL98wncOYxh60EbCZ1TzFU/RVjS+P/o9xl4aSCI9lzMpOLbrAvRr9jwiImKNdRuQ3R/FLXqhL527hXs5mZFXtIduYnEWYViPKlFS497Wc9yaLb9nC8Zxr0H75/L35Bk+qMK36bw0/4VADZsNXi3E5dyUIERyd9QwXmKb1ZcsIfqxx3aRX8W7uSQs6JUqUKVGilA7oec7D0QzCA45icc3QV3CChv0XWLieiRduYn8332dzVfWi8heqMd3GFA31Li7j2aSUNY+ShVlP8IHLNX5ESMQr7Ja7gMhPL1GYmyy0WQUH9wCTDCKA93MFt3EbV3ECfs6vZbHdXCQpK8fBN7D/g/wTgaCU+cRQgSm3cE5aa85WiXmasCwippc96q2Ag8uTGgNUQnBR7iAcHNpZYFF7lYiY9XxAq0fZQqmneAxrjQnzMoLbDI6DD5xPjKCkrdkl+a9rckXg4NLJC8pxyOPkF/pz0gVmaLyfkJgNjM6pzzp4tPFnC0ewQsK2bEtYxXJfuYCeRtfusMrCLKZdm6X1gQsVVNEWVHVjLmzGBy7W2JIyMff0VzMf+LJmMCUEV+bqvwfcXAhbFyDoZZpmObZJYJxvZH+IoIeJ2vd4wKcQBUC6EX0IvpujQNId3Z5bg44QbGZcbZ3RM2hTSMihaRK5fgDnFoY2lhE8YdBMvcWelWOr4zQdEBGwnfdqZ5qLw75stapu9Q8Mj9OI4E8acx72j4gdoIMXcq1pgGB5DqtcHPbkjYIDSETw7YaAuC4uozT0Vr/hDMPi6wL3NADaCohZw4hMo+zjMFcjgDKCK6rpcoHpmsGU1bLj5+jidQ2hzkLCbH/AyvwssLL+8y18n2MbxMyVFbzczxTqHvTmQnoCVR1wq8n4qIaMAMEpua+axDZNAsq0GF9eOCnsA+dZVKFk9lSfw3HBovSa75g8x7DMOeAAj+bOgRDB87TL3yX7oSZBDvJG4FPm6cwQ3AU+wQgryIioe76L4HT83NREts6GvIv5hsRDhMfLfEZtFMxnf8xU3p9CUooawpipzEHkuM1P5HLUAcYny3By8zu12Jn1vJL5uBg4HmG1lGal0QTTmJk5hLxnCLpZQIcWqySAiLmsx9XicFzgOIYVQhz1H/0JuZQs14wiZgTjK0QIYELugwSwiZ0ZAnCIGcUM69JG/fNDPGYXWAU8Yq5lGoFB/33m8YhxbgngqKaqAPBuyHiLAF7QjCvG6T8DurWv2pL5MAeYwgTiBosb8q6ZBax/yNmcaUC7hbTxe35sxNI5RDgc2EQsIsfflQF5FMBGTV5ZgEpLpjNghHYGvJn5rQPsgdPE/l4H2DPXVtZb/0P5uWFPc0Qbq/hCmlbWX92amW937cbonCe8yY6abdn9V8MRlRkgwLA1f2cu+7qbLOXBKCsBOAhGsIARWoitAEqcwdacofe/htPRJPVeZoZVAGVN3YEKx92qW/Jf067RuGYvuyXQI+YGDtRaf0GIz4Uss/asWtEuRBT8vN/3iRuqJ2R05gMFsLWpKSzU+mJ6gk/I+XzaaP3buZXrCyCpd7DDmmF5tmF7pnsCw3LVVkYOQe0M2Kb1WsdmWnoBbCjgRGbbwrVGAXiEHMnVRt+/nX/yRUvrL3cLbGMD1S04iqvPRjbnfDuGzlxz6ah1VVRmwBatDkxgZAaJAljDq5b2No+Q5caAJ2J3bqdNu1lJADs5gzcLUOMCK5toEiIQPEOIlzkDJhpUYWutCVqvDRvGsU+mAFy2sQzR8Ergs4PHtAZQAtsXsBehdqZF+FzIU4Xiagd4uIk9aAKHv+b6hzM0Ku0i2FyZAYBqoJTnL3vMzPSXXeDuhgcQAY/To41XPSLmc7Qh9App47fcWHAfTQw8wPYMDbZjv8dO7stUHwHM0tzp0ltl/PCAkzR1zBKC6zMTxw4wmvVWcPDsfOKZ2mScD5xjRLwFCFYyooHaQoJnazQbemsuVzrpyU2XhwieVZjSVI8PoJxbwwkRrM3Jv3jAZQ2mo2PW0KkxAR4wmxKBVrwRATs4rKHKgsTCyk0ixfK5ctvFwZlv9XD4oKZaEfRHiTpAG88ZbjlRQWD7S9tlFD2KoUU16FT06Ih9WW98cgnBZ2kU6ewBv26gSUMJwU/IR2v8SqOUdQUZecvthlvu0rzuo4WbYJQQLECHjHAYyTLjZosygptpHGju4jKWnoJdw8oIVtOdafQcHMaxWbMvOawH6frAlzQCiIjYydScvKcHfAdBn7UIygieyhmAHISHx/1WVa8nGd5UWw8PmEO5QJeMAMGbHJqTxktQEfm8FGxiTK1Bl6uACVp9A3kIHY8EHx9aav9qJqFH+99sNAwhIVuY2kQ+s8KyTxBbrmQlBNv5EPlopdG8otH/MjH3kgHMcliiRYaGlDlUK4IfKFxZ1A8J1n/pEixlbwP7f2yJ9zyFVvTX8oGT2GoEp0jqX+SIXKPnA/O1tJcQfL7+fh+4RKNzcrgPkYcwk8bpDNb3A/dFNX0SJcLy53Qa2G+z2aKksDmtaezkATN5pKqHYlSnfhLfegd75grdA96lgctIfmzNQiq5wBT6tO5YgOBCzZA9YA9+wlYFqg0UMLdchTV+gKNrclBZ7L/UYkkvI7iDVu508QCXcxU+NBFESW1qkn+Pc3L622w7MIzlxq1WOc6HC9ypvTkiYCeHG0QAk7mYR3mjBuHcxzP8lCNSPzmf/fMs2C+RSl3WoVdlv45uuZZK0cEnuJ11CgWaUP8s13NM6p/lG7JfGExniKjFxdZu0DiSR6padGcF7x49HMGrudssKlscJrI/+zCWNrbwEmtYqxqCu9o7L+c7BAavJsZlE4fzgqHoXj0y3b+zvutkTyYzng52sIF1rEs7TOfd20bAxfxAmzKP8HmUOXl0u8CDBo9Y7nMaix7u5+fAVvUIzWT5iowxaEmLrs568uGcw9c4h1m4Wi1OXOCs53iaeyqOfGTg3sn5lHvAMVZbjp9gvHH5q96mZ+oh4QMd3Gbd/MI+8vWAE1lSZU6WcbrGjlfPR8+SehcPCW4OjOxfrG/T4yFhpebwZyUHtGgJlNozlcX9PJ/8xOC3rNnvA1+vcQjkgvprulq2gEtKvosw5qzKCMMWL1wc9mO7sbFYgOD1lnS5TfpFvGYVBpUQXGvN/jbgqwjKVfMq2aezgsNbQL3U/XH8ztJvu9X8Rs8QSNf2GvkR3ZADW7cxDxKk90vLzkElBL/Dtp+oD3w2J7QqIdjJZXQq6p2GmC/V4CSet9yj/Dp7mPuEyV5Bj1kkp2TPhVXKohZvVyN//RletOydVUJwt1VHooT9H9eYhYAYwUrmqqf5BdIZlWV6MjdbKk8ClbfqlwJTLRH/0ldexElqGB6+gUHVPsZJPGxJftIrosMSBukDx9OnHUOy3+sxPk1nuhp5RuoT8zeZq9hitPwV6m+xj9o94AzLHV+hMkb/xZfYq+oJyUZ/2XUt2fCfDG4UZ/F3xXzb9N2DDLdMu/nAB9hpUadLmqmu4jIOrDEuSZuCLOpdPsAv2GKtPAGC/y5WsfOBK63LFIESwhbu5N+Zpp1mEzmNm+hRnklgvanvz4XYP5stNfsU9QmWsop2H+ISZieYzcxrd47nKp5SDm3ZshNpzCYOyKPe0USld3IKZWNjiyQ6TdpWBqzhWf6HNaxnE30IoIux7Ms0DmI6o9WvbJfugHb+wFxCq7jXI+IQ/sZuBhRRHvXwMv9kFc/xEm/wJgE+XYxjEgcwgxmKenmkl2P1ZIDjeVAbf+eIoJO/Far2yp65cV3H2dpPipzXEhIiuEF1LbQznlN5qaEadXW+Nv8vsKx5VNP/ycZyti4wiqWF66WREkTSqDhSfZjLhRv/SmFeim0XdQ+YyOqm+qRHKlIopx2jk38X76QtBXVm4ylzFxjHkgIiiOoGEzW4f0x6Dlv5uLXf7wETWPGWaFOf0N+Xs7eukAh248EBP3dCeifLOMiafBcY2cB83ZXs38gxzReMZHfMXyEaAl81JrQSAsHNKl+Tl+Jz+6VQhrPI2DgvGCD1CRAsYWpr6nVytf8G0YBolyR+A2dmZmq8jDKo/H8bf8mlL1mH4gE4xCQJ766lg5adBuUo6MYzu/iIkySo+w17ZVp+CSQ+gi9yEeemzZPkWai/19azpe7vZJGqWIdNzE/T/nnBWj6mKbs2kbUcydVEBbQoKvBNEpM+yUk5WUoX+KTqWy5bKi3iCPXL3xhmp3QH5wKna3sCNaf5EYKdXKPOyGj5cXRJo96/pgecRC1ZAaI0kl7Nuao5UzYGdX765qSHVcB5wPVG9gdVMOBOvqoi8VYdYhgq5gsWclALktwGUwQfVfANYfCNI6uIQYZpz3KBSgLkwR//Q+ltracR87AhmyqztkkNTT59DN9kbdqarPETYipdwAL+yBwt5KBFVxKAH8tCttXEtlFBshPUQYn7OI1hGuJdYP9MlHSkTn0yJc3PptIvLlGjLj7LI0r8RQ8sqsYJCV7hZxySIk0H4ErYNIWLeIydNYfcVMe/tYwK03g4SgW3lEvTY5Q9LdzjO7kBVmC0/fU4tArO+z38kGf7HTQU1IwgSukPahr4CQSbuJMzGDOQzK8IIXndfpzDAp6ra/RYcQDjuoxKD3/iAmZUFfZMPU0eMrA63/Z/gexuiZWiUBvv5WLurzo5qjKGbPq3sZzrOKXqzBC3cbvejDly06O/25nMDKYzjb0Zz2500ZZu0xQE9NHLRv6X1TzNSlaxPdVuu726KzhYs/U/6xJEtPFFw7ZVFzf9dhQHcDAzmcqevIMuOtN5ElKilzd4mRdZzdM8k27pcnEKn/DUMgFUhlC7Tc+ji26GMZIO1d5rO9t5s2pPrrzLdpu0g2AJ7y0kAEGMz1f4mbZTbvJ8p46aLkbSzXDaiBFsYzu9bK/5hY9ojvWt9pBcbY/D6kqZW/i4EPgNcYE4XC69xc5eqqQ5XG0h3m/y0IcBEYZTVYpMjoJqbgvFh6ybYibsv7CpTEwyhoR+twUHi76NLxe4y7Izo2T/12j9odD/jy/ZJXep9QElFw2xf1fMgXEG7H3C/kuG2L9rIg+YwNPa7W9lVcIcYv8uE8HEXBFI9n9riP2DNQvK6Z4xZ4hRu3oWrKwTQeWMgCH2D4AI9uoHPikj+OEQ+wdSBO9kjUJwS9t/Jbs8Ez901YpgCusQ7KQPwY+G2D/Qlw/szzq1TWSI/YM0CyZzAxdCg8dADF0tiI5louJtnWV5e4vAbaJl4NA1dA1dg379H730NPAvilhKAAAAAElFTkSuQmCC"); }
+.mohu-ic { display: block; width: 26px; aspect-ratio: 192 / 105; background: currentColor;
+  -webkit-mask: var(--mohu-mask) center / contain no-repeat; mask: var(--mohu-mask) center / contain no-repeat; }
+.mohu-fab { position: fixed; z-index: 15; right: max(14px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1.5px solid var(--mohu-line); border-radius: 50%;
+  background: var(--card); color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.16); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mohu-fab:active { transform: scale(.94); }
+.mohu-fab[hidden], .mohu-panel[hidden] { display: none; }
+.mohu-panel { position: fixed; z-index: 15; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  width: min(520px, calc(100vw - 2 * max(16px, env(safe-area-inset-left, 0px)))); display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-block: 12px;
+  border: 1.5px solid var(--mohu-line); box-shadow: 0 -6px 18px rgba(0,0,0,.14); animation: mohu-in .18s ease-out; }
+@keyframes mohu-in { from { transform: translate(-50%, 12px); opacity: 0; } }
+html.mohu-open body { padding-bottom: 150px; }
+.mohu-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mohu-close { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 2px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mohu-close .mohu-ic { width: 34px; }
+.mohu-reset { min-height: 30px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.mohu-reset.is-undo { color: var(--accent); }
+.mohu-row { display: flex; align-items: center; gap: 8px; }
+.mohu-step { display: flex; height: 44px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); }
+.mohu-step button { width: 44px; border: 0; background: none; color: var(--ink); font-size: 20px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mohu-step input { width: 58px; border: 0; border-inline: 1px solid var(--line); background: var(--card); text-align: center; font-family: var(--font-num); font-size: 18px; font-weight: 600; }
+.mohu-add { height: 44px; min-width: 52px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--muted); font-weight: 600; cursor: pointer; }
+.mohu-amount { width: 58px; height: 44px; border: 1px solid var(--accent); border-radius: 10px; background: var(--card); text-align: center; font-family: var(--font-num); font-size: 18px; font-weight: 600; }
+.mohu-amount[hidden], .mohu-add[hidden] { display: none; }
+.mohu-amount[aria-invalid="true"] { border-color: var(--sun); }
+.mohu-sum { flex: 1 1 0; min-width: 0; margin-left: auto; text-align: right; line-height: 1.1; }
+.mohu-sum b { display: block; font-family: var(--font-num); font-size: 24px; font-weight: 600; white-space: nowrap; }
+.mohu-sum small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; }
+</style>
+
+<div class="wrap">
+  <section class="card head">
+    <div class="head-top">
+      <div class="brand" id="brand">Túlóranapló</div>
+      <div class="head-right"><div class="store" id="store"></div>
+        <button type="button" class="theme-btn" id="themeBtn" data-i18n-aria="aTheme"></button></div>
+    </div>
+    <div class="pickers">
+      <select id="year" data-i18n-aria="aYear"></select>
+      <select id="month" data-i18n-aria="aMonth"></select>
+    </div>
+    <div class="goal">
+      <label for="goal"><span data-i18n="goalLabel"></span><small id="goalSub"></small>
+        <span class="goal-mode" role="group" data-i18n-aria="aGoalMode"><button type="button" id="modeHours" aria-pressed="true" data-i18n="modeHours"></button><button type="button" id="modeNet" aria-pressed="false" data-i18n="modeNet"></button></span>
+      </label>
+      <input id="goal" type="number" inputmode="decimal" min="0" max="300" step="0.5" placeholder="0">
+      <span class="hint" id="goalUnit"></span>
+    </div>
+    <div class="goal-derived" id="goalDerived" hidden></div>
+  </section>
+  <section class="card progress" id="progress" data-i18n-aria="aProgress">
+    <div class="progress-line"><span><span class="big" id="total">0</span> <span class="of" id="of"></span></span><span class="pct" id="pct"></span></div>
+    <div class="bar" id="bar"><i></i></div>
+    <div class="hint" id="remain"></div>
+  </section>
+  <section class="card">
+    <div class="toggles">
+      <div class="toggle"><span data-i18n="recLabel"></span><label class="switch"><input type="checkbox" id="optRec" checked data-i18n-aria="aRec"><span></span></label></div>
+      <div class="toggle" id="weekendRow"><span><span data-i18n="satLabel"></span> <small class="sat-pick" id="satPick" hidden><select id="satCount" data-i18n-aria="aSatCount"></select> <span data-i18n="satSuffix"></span></small></span><label class="switch"><input type="checkbox" id="optWeekend" data-i18n-aria="aWeekend"><span></span></label></div>
+    </div>
+  </section>
+  <section class="card pay" id="payCard">
+    <div class="pay-head"><h2 data-i18n="payTitle"></h2><span class="hint" id="hourly"></span></div>
+    <div class="pay-grid">
+      <div class="pay-box"><span id="nowLabel"></span><b id="netNow">–</b><small id="otNow"></small></div>
+      <div class="pay-box is-goal"><span data-i18n="atGoal"></span><b id="netGoal">–</b><small id="otGoal"></small></div>
+    </div>
+    <details class="settings">
+      <summary data-i18n="paySettings"></summary>
+      <div class="set-grid">
+        <label><span data-i18n="pBase"></span><input id="pBase" type="number" inputmode="numeric" min="0" step="1000"></label>
+        <label><span data-i18n="pRate"></span><input id="pRate" type="number" inputmode="numeric" min="100" step="25"></label>
+        <label><span data-i18n="pExtra"></span><input id="pExtra" type="number" inputmode="numeric" min="0" step="1000" placeholder="0"></label>
+        <label><span data-i18n="pRelief"></span><select id="pRelief"></select></label>
+        <label id="capRow" hidden><span id="capLabel"></span><input id="pCap" type="number" inputmode="numeric" min="0" step="1000"></label>
+        <p class="set-note" data-i18n="setNote"></p>
+      </div>
+    </details>
+  </section>
+  <div id="weeks" class="weeks"></div>
+  <p class="foot"><span data-i18n="foot"></span><span id="calNote"></span></p>
+</div>
+<div class="notice-back" id="bakBack" hidden>
+  <section class="notice bak" role="dialog" aria-modal="true" aria-labelledby="bakTitle">
+    <h3 id="bakTitle" data-i18n="bakTitle"></h3>
+    <p data-i18n="bakText"></p>
+    <textarea id="bakData" spellcheck="false" autocomplete="off" data-i18n-aria="bakTitle"></textarea>
+    <p class="bak-status" id="bakStatus" aria-live="polite"></p>
+    <div class="bak-row"><button type="button" class="ghost" id="bakCopy" data-i18n="bakCopy"></button><button type="button" class="ghost" id="bakLoad" data-i18n="bakLoad"></button><button type="button" id="bakClose" data-i18n="bakClose"></button></div>
+  </section>
+</div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<button type="button" class="mohu-fab" id="mohuFab" data-i18n-aria="aMohuOpen" aria-expanded="false" aria-controls="mohuPanel"><span class="mohu-ic"></span></button>
+<section class="card mohu-panel" id="mohuPanel" hidden data-i18n-aria="mohuTitle">
+  <div class="mohu-head">
+    <button type="button" class="mohu-close" id="mohuClose" data-i18n-aria="aMohuClose"><span class="mohu-ic"></span><span data-i18n="mohuTitle"></span></button>
+    <button type="button" class="mohu-reset" id="mohuReset"></button>
+  </div>
+  <div class="mohu-row">
+    <div class="mohu-step"><button type="button" id="mohuMinus" data-i18n-aria="aMohuMinus">−</button><input id="mohuValue" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i18n-aria="aMohuValue"><button type="button" id="mohuPlus" data-i18n-aria="aMohuPlus">+</button></div>
+    <button type="button" class="mohu-add" id="mohuAddBtn" data-i18n-aria="aMohuAdd">+…</button>
+    <input class="mohu-amount" id="mohuAmount" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i18n-aria="aMohuAmount" hidden>
+    <output class="mohu-sum" id="mohuSum"><b>0 Ft</b><small></small></output>
+  </div>
+</section>
+<div class="notice-back" id="noticeBack" hidden>
+  <section class="notice" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
+    <div class="notice-kicker"><span data-i18n="noticeKicker"></span><time id="noticeDate"></time></div>
+    <h3 id="noticeTitle"></h3>
+    <p id="noticeBody"></p>
+    <p class="notice-change" id="noticeChange" hidden></p>
+    <button type="button" id="noticeOk" data-i18n="noticeOk"></button>
+  </section>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const LOCAL_KEY = "tulora.v2";
+  const YEAR_MIN = 2026, YEAR_MAX = 2030;
+
+  // ---- nyelvek (rejtett váltó: a címre koppintva magyar → angol → lengyel → magyar) ----
+  const LANGS = ["hu", "en", "pl"];
+  const LANG_KEY = "tulora.lang";
+  const I18N = {
+    hu: {
+      locale: "hu-HU",
+      months: ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"],
+      monthsShort: ["jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."],
+      weekdays: ["V", "H", "K", "Sze", "Cs", "P", "Szo"],
+      aTheme: "Téma", aYear: "Év", aMonth: "Hónap", aGoalMode: "Cél megadása", aProgress: "Haladás", aRec: "Napi ajánlás",
+      aWeekend: "Ajánlás szombatokra is", aSatCount: "Hány szombatra a hónapban",
+      goalLabel: "Havi cél", modeHours: "túlóra", modeNet: "nettó bér",
+      goalSubHours: "ennyi túlórát szeretnék gyűjteni", goalSubNet: "ennyi nettó bért szeretnék elérni", unitHours: "óra",
+      recLabel: "Napi ajánlás a hátralévő napokra", satLabel: "Szombatokra is", satSuffix: "a hónapban",
+      sat: n => `${n} szombat`,
+      payTitle: "Várható nettó", atGoal: "A cél elérésekor", paySettings: "Bérbeállítások (a bérlap alapján)",
+      pBase: "Bruttó alapbér (Ft/hó)", pRate: "Túlóra díjazása (%)", pExtra: "Egyszeri bruttó ebben a hónapban (pl. prémium)",
+       pRelief: "Adókedvezmény", reliefNone: "Nincs", reliefU25: "25 év alatti",
+      capLabel: y => `SZJA-mentes határ ${y}-ban (bruttó Ft/hó)`,
+      setNote: "Bérszabály (Soniclab-bérlap): a túlóra „Jutalom” soron, 200%-on jár, az órabér = alapbér ÷ (a hónap munkanapjai × 8 óra) – ezt a naptárból számolom, ezért hónaponként változik. Levonás: 18,5% TB-járulék + 15% SZJA; 25 év alatti kedvezménnyel az SZJA a mentes határig nem jár, csak a fölötti részre. A SZÉP-kártya nincs benne. Becslés, nem bérszámfejtés.",
+      foot: "A lépésköz 0,5 = fél óra. Az ünnepnapok és áthelyezett munkanapok a hivatalos naptár szerint; az új rendeleteket és törvényváltozásokat havonta automatikus ellenőrzés figyeli.",
+      calKnown: (y, dec, n) => n ? `${y}: ${n} ledolgozós szombat a ${dec} szerint.` : `${y}: a ${dec} szerint nincs áthelyezett munkanap.`,
+      calMissing: y => `${y}: az áthelyezett munkanapokról szóló rendelet még nem jelent meg.`,
+      decree: id => `${id}. NGM rendelet`, today: "ma", noticeKicker: "Naptárfigyelő", noticeOk: "Rendben",
+      mohuTitle: "Visszaváltás", aMohuOpen: "Visszaváltási számláló (MOHU)", aMohuClose: "Számláló bezárása", aMohuMinus: "Eggyel kevesebb",
+      aMohuPlus: "Eggyel több", aMohuValue: "Darabszám (0–999)", aMohuAdd: "Több darab hozzáadása", aMohuAmount: "Hozzáadandó darab; Enter: hozzáadás, Esc: mégse",
+      mohuEach: n => `${n} db × 50 Ft`, mohuReset: "Nullázás", mohuUndo: "Visszavonás",
+      loading: "Betöltés…", storeLocal: "Csak ezen az eszközön mentve", storeCloud: "Mentve a fiókodba", storeDevice: "A telefonon mentve",
+      bakTitle: "Adatok mentése és visszatöltése", bakText: "Az összes hónap és beállítás egyetlen szövegben. Másold ki, és küldd el magadnak (pl. e-mailben vagy jegyzetbe); új telefonon illeszd be ide, majd Visszatöltés.",
+      bakCopy: "Másolás", bakLoad: "Visszatöltés", bakClose: "Bezárás", bakCopied: "Kimásolva – illeszd be egy üzenetbe vagy jegyzetbe.",
+      bakBad: "Ez nem Túlóranapló-mentés.", bakConfirm: "A visszatöltés felülírja az itt lévő összes adatot. Folytatod?", bakDone: "Visszatöltve.",
+      noBase: "Add meg a bruttó alapbért a Bérbeállításokban.",
+      themes: { auto: "Auto", light: "Világos", dark: "Sötét" }, themeTitle: n => `Téma: ${n.toLowerCase()} – koppints a váltáshoz`,
+      week: (i, m, a, b) => `${i}. hét <small>· ${m} ${a}–${b}.</small>`, sumUnit: "ó",
+      shortDate: (m, d) => `${m} ${d}.`,
+      dayAria: (y, m, d) => `${y}. ${m} ${d}. túlóra (óra)`,
+      derivedEmpty: "Írd be a havi nettó célt – kiszámolom, hány óra túlóra kell hozzá.",
+      derivedNeed: (h, wd, r) => `Ehhez ebben a hónapban <b>${h} óra</b> túlóra kell (${wd} munkanap, ${r}/ó).`,
+      derivedNone: "Ezt a nettót túlóra nélkül is eléred.",
+      hourly: (wd, h, o) => `${wd} munkanap · órabér ≈ ${h} · túlóra ≈ ${o}/ó`,
+      nowLabel: h => `${h} óra túlórával`, otPart: x => `ebből túlóra +${x}`, otNone: "túlóra nélkül",
+      goalLine: (h, x) => `${h} óra · túlóra +${x}`, setGoal: "add meg a havi célt",
+      of: g => `/ ${g} óra`, ofNone: "óra",
+      remainNoGoal: "Add meg a havi célt, és a hátralévő napokra átlagot számolok.",
+      remainDone: x => `Megvan a cél! <b>+${x}</b> óra a cél felett.`,
+      remainNoDays: x => `Még <b>${x}</b> óra hiányzik, de ebben a hónapban már nincs kitöltetlen hátralévő nap.`,
+      remainOpen: (x, n, a) => `Még <b>${x}</b> óra · ${n} nap · átlag <b>${a}</b> óra/nap`,
+      days: {
+        newyear: "Újév", mar15: "Nemzeti ünnep", may1: "A munka ünnepe", aug20: "Államalapítás ünnepe", oct23: "Nemzeti ünnep",
+        allsaints: "Mindenszentek", xmas: "Karácsony", goodfri: "Nagypéntek", easter: "Húsvét", eastermon: "Húsvéthétfő",
+        pentecost: "Pünkösd", pentecostmon: "Pünkösdhétfő", xmaseve: "Szenteste", nye: "Szilveszter",
+        swapRest: "pihenőnap (áthelyezett)", swapWork: "ledolgozós szombat"
+      },
+      desc: {
+        newyear: "Az év első napja. Törvényes munkaszüneti nap.",
+        mar15: "Az 1848–49-es forradalom és szabadságharc kezdetének emléknapja. Nemzeti ünnep, munkaszüneti nap.",
+        oct23: "Az 1956-os forradalom és szabadságharc kitörésének, valamint a köztársaság 1989-es kikiáltásának emléknapja. Nemzeti ünnep, munkaszüneti nap.",
+        may1: "Május 1., a munkavállalók nemzetközi ünnepe. Munkaszüneti nap.",
+        aug20: "Augusztus 20.: Szent István király ünnepe, az államalapítás emléknapja. Nemzeti ünnep, munkaszüneti nap.",
+        allsaints: "November 1.: az elhunytakra emlékezés napja (másnap halottak napja). Munkaszüneti nap.",
+        xmas: "Jézus születésének ünnepe (december 25–26.). Mindkét nap munkaszüneti nap.",
+        goodfri: "Jézus kereszthalálának emléknapja, a húsvét előtti péntek. 2017 óta munkaszüneti nap.",
+        easter: "Jézus feltámadásának ünnepe. Mozgó ünnep: a tavaszi napéjegyenlőség utáni első holdtölte utáni vasárnap.",
+        eastermon: "A húsvét második napja. Munkaszüneti nap; a dátuma a húsvéttal együtt évente változik.",
+        pentecost: "A Szentlélek eljövetelének ünnepe, a húsvét utáni 50. nap (vasárnap).",
+        pentecostmon: "A pünkösd második napja. Munkaszüneti nap; a dátuma a húsvéttól függ.",
+        xmaseve: "December 24., karácsony előestéje. Önmagában nem munkaszüneti nap.",
+        nye: "Az év utolsó napja. Rendes munkanap."
+      },
+      swapRest: (d, dec) => `Áthelyezett pihenőnap: a hosszú hétvége miatt ezen a napon nem kell dolgozni, cserébe ${d} (szombat) munkanap. (${dec})`,
+      swapWork: (d, dec) => `Áthelyezett munkanap: ezen a szombaton dolgozni kell, cserébe ${d} pihenőnap. (${dec})`
+    },
+    en: {
+      locale: "en-GB",
+      months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+      monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+      aTheme: "Theme", aYear: "Year", aMonth: "Month", aGoalMode: "Goal type", aProgress: "Progress", aRec: "Daily suggestion",
+      aWeekend: "Suggest for Saturdays too", aSatCount: "How many Saturdays this month",
+      goalLabel: "Monthly goal", modeHours: "overtime", modeNet: "net pay",
+      goalSubHours: "overtime hours I want to collect", goalSubNet: "net pay I want to reach", unitHours: "hours",
+      recLabel: "Daily suggestion for the remaining days", satLabel: "Saturdays too", satSuffix: "this month",
+      sat: n => `${n} Saturday${n === 1 ? "" : "s"}`,
+      payTitle: "Expected net pay", atGoal: "When the goal is reached", paySettings: "Pay settings (from your payslip)",
+      pBase: "Gross base salary (Ft/month)", pRate: "Overtime rate (%)", pExtra: "One-off gross this month (e.g. bonus)",
+       pRelief: "Tax relief", reliefNone: "None", reliefU25: "Under 25",
+      capLabel: y => `Income-tax-free limit in ${y} (gross Ft/month)`,
+      setNote: "Pay rule (Soniclab payslip): overtime is paid on the „Jutalom” (bonus) line at 200%; hourly rate = base salary ÷ (the month's workdays × 8 h) – taken from the calendar, so it changes from month to month. Deductions: 18.5% social security contribution + 15% personal income tax; with the under-25 relief no income tax is due up to the tax-free limit, only on the part above it. The SZÉP card is not included. An estimate, not a payroll calculation.",
+      foot: "Step 0.5 = half an hour. Public holidays and moved working days follow the official Hungarian calendar; a monthly automatic check watches for new decrees and law changes.",
+      calKnown: (y, dec, n) => n ? `${y}: ${n} working Saturday${n === 1 ? "" : "s"} under ${dec}.` : `${y}: no moved working days under ${dec}.`,
+      calMissing: y => `${y}: the decree on moved working days has not been published yet.`,
+      decree: id => `NGM Decree ${id}`, today: "today", noticeKicker: "Calendar watch", noticeOk: "Got it",
+      mohuTitle: "Deposit return", aMohuOpen: "Deposit return counter (MOHU)", aMohuClose: "Close counter", aMohuMinus: "One less",
+      aMohuPlus: "One more", aMohuValue: "Count (0–999)", aMohuAdd: "Add several", aMohuAmount: "Amount to add; Enter: add, Esc: cancel",
+      mohuEach: n => `${n} pcs × 50 Ft`, mohuReset: "Reset", mohuUndo: "Undo",
+      loading: "Loading…", storeLocal: "Saved on this device only", storeCloud: "Saved to your account", storeDevice: "Saved on this phone",
+      bakTitle: "Back up and restore data", bakText: "All months and settings in a single text. Copy it and send it to yourself (e.g. by e-mail or in a note); on a new phone paste it here, then Restore.",
+      bakCopy: "Copy", bakLoad: "Restore", bakClose: "Close", bakCopied: "Copied – paste it into a message or a note.",
+      bakBad: "This is not a Túlóranapló backup.", bakConfirm: "Restoring overwrites all data here. Continue?", bakDone: "Restored.",
+      noBase: "Enter your gross base salary in Pay settings.",
+      themes: { auto: "Auto", light: "Light", dark: "Dark" }, themeTitle: n => `Theme: ${n.toLowerCase()} – tap to switch`,
+      week: (i, m, a, b) => `Week ${i} <small>· ${m} ${a}–${b}</small>`, sumUnit: "h",
+      shortDate: (m, d) => `${d} ${m}`,
+      dayAria: (y, m, d) => `Overtime on ${d} ${m} ${y} (hours)`,
+      derivedEmpty: "Enter your monthly net target – I'll work out how many overtime hours it takes.",
+      derivedNeed: (h, wd, r) => `This month that takes <b>${h} h</b> of overtime (${wd} workdays, ${r}/h).`,
+      derivedNone: "You reach this net pay without overtime.",
+      hourly: (wd, h, o) => `${wd} workdays · hourly ≈ ${h} · overtime ≈ ${o}/h`,
+      nowLabel: h => `With ${h} h overtime`, otPart: x => `of which overtime +${x}`, otNone: "without overtime",
+      goalLine: (h, x) => `${h} h · overtime +${x}`, setGoal: "set a monthly goal",
+      of: g => `/ ${g} h`, ofNone: "h",
+      remainNoGoal: "Set a monthly goal and I'll spread the rest over the remaining days.",
+      remainDone: x => `Goal reached! <b>+${x}</b> h above the goal.`,
+      remainNoDays: x => `<b>${x}</b> h still missing, but there are no open days left this month.`,
+      remainOpen: (x, n, a) => `<b>${x}</b> h to go · ${n} day${n === 1 ? "" : "s"} · avg <b>${a}</b> h/day`,
+      days: {
+        newyear: "New Year's Day", mar15: "National Day", may1: "Labour Day", aug20: "State Foundation Day", oct23: "National Day",
+        allsaints: "All Saints' Day", xmas: "Christmas", goodfri: "Good Friday", easter: "Easter Sunday", eastermon: "Easter Monday",
+        pentecost: "Whit Sunday", pentecostmon: "Whit Monday", xmaseve: "Christmas Eve", nye: "New Year's Eve",
+        swapRest: "rest day (moved)", swapWork: "working Saturday"
+      },
+      desc: {
+        newyear: "The first day of the year. Statutory public holiday.",
+        mar15: "Commemorates the start of the 1848–49 Revolution and War of Independence. National holiday, day off.",
+        oct23: "Commemorates the outbreak of the 1956 Revolution and the proclamation of the Republic in 1989. National holiday, day off.",
+        may1: "1 May, International Workers' Day. Public holiday.",
+        aug20: "20 August: feast of King Saint Stephen, commemorating the founding of the state. National holiday, day off.",
+        allsaints: "1 November: the day of remembering the dead (All Souls' Day follows). Public holiday.",
+        xmas: "Celebration of the birth of Jesus (25–26 December). Both days are public holidays.",
+        goodfri: "Commemorates the crucifixion of Jesus, the Friday before Easter. A public holiday since 2017.",
+        easter: "Celebration of the resurrection of Jesus. Movable feast: the Sunday after the first full moon following the spring equinox.",
+        eastermon: "The second day of Easter. Public holiday; its date changes every year with Easter.",
+        pentecost: "Celebrates the coming of the Holy Spirit, the 50th day after Easter (Sunday).",
+        pentecostmon: "The second day of Pentecost. Public holiday; its date depends on Easter.",
+        xmaseve: "24 December, the eve of Christmas. Not a public holiday on its own.",
+        nye: "The last day of the year. A normal working day."
+      },
+      swapRest: (d, dec) => `Moved rest day: no work on this day because of the long weekend; in exchange ${d} (Saturday) is a working day. (${dec})`,
+      swapWork: (d, dec) => `Moved working day: you work on this Saturday; in exchange ${d} is a rest day. (${dec})`
+    },
+    pl: {
+      locale: "pl-PL",
+      months: ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"],
+      monthsShort: ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"],
+      weekdays: ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "So"],
+      aTheme: "Motyw", aYear: "Rok", aMonth: "Miesiąc", aGoalMode: "Rodzaj celu", aProgress: "Postęp", aRec: "Dzienna sugestia",
+      aWeekend: "Sugestia także na soboty", aSatCount: "Ile sobót w miesiącu",
+      goalLabel: "Cel miesięczny", modeHours: "nadgodziny", modeNet: "pensja netto",
+      goalSubHours: "tyle nadgodzin chcę zebrać", goalSubNet: "taką pensję netto chcę osiągnąć", unitHours: "godz.",
+      recLabel: "Dzienna sugestia na pozostałe dni", satLabel: "Także soboty", satSuffix: "w miesiącu",
+      sat: n => `${n} ${n === 1 ? "sobota" : n < 5 ? "soboty" : "sobót"}`,
+      payTitle: "Przewidywana pensja netto", atGoal: "Po osiągnięciu celu", paySettings: "Ustawienia płacy (z paska wypłaty)",
+      pBase: "Płaca zasadnicza brutto (Ft/mies.)", pRate: "Stawka za nadgodziny (%)", pExtra: "Jednorazowo brutto w tym miesiącu (np. premia)",
+       pRelief: "Ulga podatkowa", reliefNone: "Brak", reliefU25: "Poniżej 25 lat",
+      capLabel: y => `Limit zwolnienia z PIT w ${y} r. (brutto Ft/mies.)`,
+      setNote: "Zasada płacowa (pasek Soniclab): nadgodziny są płacone w pozycji „Jutalom” (premia) według stawki 200%; stawka godzinowa = płaca zasadnicza ÷ (dni robocze miesiąca × 8 h) – liczona z kalendarza, więc zmienia się co miesiąc. Potrącenia: 18,5% składki na ubezpieczenie społeczne + 15% podatku dochodowego; z ulgą dla osób poniżej 25 lat podatek nie jest pobierany do limitu zwolnienia, tylko od nadwyżki. Karta SZÉP nie jest uwzględniona. Szacunek, nie rozliczenie płac.",
+      foot: "Krok 0,5 = pół godziny. Święta i przeniesione dni robocze według oficjalnego kalendarza węgierskiego; nowe rozporządzenia i zmiany ustaw sprawdzane są automatycznie co miesiąc.",
+      calKnown: (y, dec, n) => n ? `${y}: soboty odpracowywane wg ${dec}: ${n}.` : `${y}: wg ${dec} brak przeniesionych dni roboczych.`,
+      calMissing: y => `${y}: rozporządzenie o przeniesionych dniach roboczych jeszcze się nie ukazało.`,
+      decree: id => `rozporządzenia NGM ${id}`, today: "dziś", noticeKicker: "Kontrola kalendarza", noticeOk: "OK",
+      mohuTitle: "Zwrot kaucji", aMohuOpen: "Licznik zwrotu kaucji (MOHU)", aMohuClose: "Zamknij licznik", aMohuMinus: "O jeden mniej",
+      aMohuPlus: "O jeden więcej", aMohuValue: "Liczba sztuk (0–999)", aMohuAdd: "Dodaj kilka", aMohuAmount: "Liczba do dodania; Enter: dodaj, Esc: anuluj",
+      mohuEach: n => `${n} szt. × 50 Ft`, mohuReset: "Zeruj", mohuUndo: "Cofnij",
+      loading: "Ładowanie…", storeLocal: "Zapisano tylko na tym urządzeniu", storeCloud: "Zapisano na Twoim koncie", storeDevice: "Zapisano w telefonie",
+      bakTitle: "Kopia zapasowa i przywracanie", bakText: "Wszystkie miesiące i ustawienia w jednym tekście. Skopiuj go i wyślij sobie (np. e-mailem lub w notatce); na nowym telefonie wklej go tutaj, a potem Przywróć.",
+      bakCopy: "Kopiuj", bakLoad: "Przywróć", bakClose: "Zamknij", bakCopied: "Skopiowano – wklej to do wiadomości lub notatki.",
+      bakBad: "To nie jest kopia Túlóranapló.", bakConfirm: "Przywrócenie nadpisze wszystkie dane. Kontynuować?", bakDone: "Przywrócono.",
+      noBase: "Podaj płacę zasadniczą brutto w ustawieniach płacy.",
+      themes: { auto: "Auto", light: "Jasny", dark: "Ciemny" }, themeTitle: n => `Motyw: ${n.toLowerCase()} – dotknij, aby zmienić`,
+      week: (i, m, a, b) => `Tydzień ${i} <small>· ${a}–${b} ${m}</small>`, sumUnit: "h",
+      shortDate: (m, d) => `${d} ${m}`,
+      dayAria: (y, m, d) => `Nadgodziny ${d} ${m} ${y} (godz.)`,
+      derivedEmpty: "Wpisz miesięczny cel netto – obliczę, ile nadgodzin jest potrzebnych.",
+      derivedNeed: (h, wd, r) => `W tym miesiącu potrzeba do tego <b>${h} h</b> nadgodzin (${wd} dni roboczych, ${r}/h).`,
+      derivedNone: "Tę kwotę netto osiągniesz bez nadgodzin.",
+      hourly: (wd, h, o) => `${wd} dni roboczych · stawka ≈ ${h} · nadgodzina ≈ ${o}/h`,
+      nowLabel: h => `Z ${h} h nadgodzin`, otPart: x => `w tym nadgodziny +${x}`, otNone: "bez nadgodzin",
+      goalLine: (h, x) => `${h} h · nadgodziny +${x}`, setGoal: "podaj cel miesięczny",
+      of: g => `/ ${g} h`, ofNone: "h",
+      remainNoGoal: "Podaj cel miesięczny, a rozłożę resztę na pozostałe dni.",
+      remainDone: x => `Cel osiągnięty! <b>+${x}</b> h ponad cel.`,
+      remainNoDays: x => `Brakuje jeszcze <b>${x}</b> h, ale w tym miesiącu nie ma już niewypełnionych dni.`,
+      remainOpen: (x, n, a) => `Jeszcze <b>${x}</b> h · ${n} ${n === 1 ? "dzień" : "dni"} · średnio <b>${a}</b> h/dzień`,
+      days: {
+        newyear: "Nowy Rok", mar15: "Święto narodowe", may1: "Święto Pracy", aug20: "Święto Założenia Państwa", oct23: "Święto narodowe",
+        allsaints: "Wszystkich Świętych", xmas: "Boże Narodzenie", goodfri: "Wielki Piątek", easter: "Wielkanoc", eastermon: "Poniedziałek Wielkanocny",
+        pentecost: "Zielone Świątki", pentecostmon: "Poniedziałek Zielonoświątkowy", xmaseve: "Wigilia", nye: "Sylwester",
+        swapRest: "dzień wolny (przeniesiony)", swapWork: "sobota odpracowywana"
+      },
+      desc: {
+        newyear: "Pierwszy dzień roku. Ustawowy dzień wolny od pracy.",
+        mar15: "Rocznica wybuchu rewolucji i walki o niepodległość 1848–49. Święto narodowe, dzień wolny.",
+        oct23: "Rocznica wybuchu rewolucji 1956 r. i proklamowania republiki w 1989 r. Święto narodowe, dzień wolny.",
+        may1: "1 maja, międzynarodowe święto pracowników. Dzień wolny od pracy.",
+        aug20: "20 sierpnia: święto króla św. Stefana, rocznica założenia państwa. Święto narodowe, dzień wolny.",
+        allsaints: "1 listopada: dzień pamięci o zmarłych (nazajutrz Zaduszki). Dzień wolny od pracy.",
+        xmas: "Święto narodzin Jezusa (25–26 grudnia). Oba dni są wolne od pracy.",
+        goodfri: "Upamiętnia śmierć Jezusa na krzyżu, piątek przed Wielkanocą. Dzień wolny od 2017 r.",
+        easter: "Święto zmartwychwstania Jezusa. Święto ruchome: niedziela po pierwszej pełni po wiosennej równonocy.",
+        eastermon: "Drugi dzień Wielkanocy. Dzień wolny; jego data co roku zmienia się razem z Wielkanocą.",
+        pentecost: "Święto zesłania Ducha Świętego, 50. dzień po Wielkanocy (niedziela).",
+        pentecostmon: "Drugi dzień Zielonych Świątek. Dzień wolny; jego data zależy od Wielkanocy.",
+        xmaseve: "24 grudnia, wieczór przed Bożym Narodzeniem. Sam w sobie nie jest dniem wolnym.",
+        nye: "Ostatni dzień roku. Zwykły dzień roboczy."
+      },
+      swapRest: (d, dec) => `Przeniesiony dzień wolny: z powodu długiego weekendu tego dnia się nie pracuje, w zamian ${d} (sobota) jest dniem roboczym. (wg ${dec})`,
+      swapWork: (d, dec) => `Przeniesiony dzień roboczy: w tę sobotę się pracuje, w zamian ${d} jest dniem wolnym. (wg ${dec})`
+    }
+  };
+  let lang = "hu";
+  try { lang = LANGS.includes(localStorage.getItem(LANG_KEY)) ? localStorage.getItem(LANG_KEY) : "hu"; } catch (_) {}
+  const L = () => I18N[lang];
+  /** A statikus feliratok, az akadálymentes címkék és a listák szövege az aktuális nyelven. */
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = L()[el.dataset.i18n]; });
+    document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", L()[el.dataset.i18nAria]));
+    L().months.forEach((name, i) => { $("month").options[i].text = name; });
+    [...$("satCount").options].forEach(o => { o.text = L().sat(Number(o.value)); });
+    const yc = yearCal(year);
+    $("calNote").textContent = yc ? L().calKnown(year, L().decree(yc.decree), Object.values(yc.swaps || {}).filter(s => s[0] === "work").length) : L().calMissing(year);
+    if (shownNotice) fillNotice(shownNotice);
+    if (backend) $("store").textContent = !backend.local ? L().storeCloud : NATIVE ? L().storeDevice : L().storeLocal;
+    else $("store").textContent = L().loading;
+  }
+
+  // ---- állapot ----
+  // A 2026. júl–szept. bérlapok alapján: a túlóra a „Jutalom” soron jár, 200%-on, órabér = alapbér ÷ (munkanapok × 8); adókedvezmény a Bérbeállításokban választható.
+  const PAY_DEFAULTS = { base: 560000, rate: 200 };
+  // months: { "2026-10": { goal, days: { "01": 1.5 }, extra, mode, netGoal } }
+  const state = { months: {}, settings: { rec: true, weekend: false, saturdays: 2, satColor: false, sunColor: false, theme: "auto", lang, pay: { ...PAY_DEFAULTS } } };
+
+  // ---- téma: automatikus (a rendszer / a Claude beállítása szerint), világos vagy sötét ----
+  const THEME_KEY = "tulora.theme";
+  const hostTheme = document.documentElement.getAttribute("data-theme"); // ha a megjelenítő maga ad meg témát
+  const THEME_ICONS = {
+    auto: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
+    light: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    dark: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>'
+  };
+  function applyTheme(theme) {
+    const t = THEME_ICONS[theme] ? theme : "auto";
+    if (t === "auto") { if (hostTheme) document.documentElement.setAttribute("data-theme", hostTheme); else document.documentElement.removeAttribute("data-theme"); }
+    else document.documentElement.setAttribute("data-theme", t);
+    const btn = $("themeBtn");
+    if (btn) { btn.innerHTML = THEME_ICONS[t] + L().themes[t]; btn.title = L().themeTitle(L().themes[t]); }
+    try { localStorage.setItem(THEME_KEY, t); } catch (_) {}
+  }
+  try { state.settings.theme = localStorage.getItem(THEME_KEY) || "auto"; } catch (_) {}
+  applyTheme(state.settings.theme);
+  const today = new Date();
+  let year = Math.min(YEAR_MAX, Math.max(YEAR_MIN, today.getFullYear()));
+  let month = today.getFullYear() === year ? today.getMonth() : 0;
+  let backend = null;
+  const NATIVE = Boolean(window.Capacitor?.isNativePlatform?.()); // önálló Android-alkalmazásként fut
+
+  const pad = n => String(n).padStart(2, "0");
+  const keyOf = (y, m) => `${y}-${pad(m + 1)}`;
+  const hu = n => (Math.round(n * 10) / 10).toLocaleString(L().locale, { maximumFractionDigits: 1 });
+  const monthData = () => state.months[keyOf(year, month)] || { goal: 0, days: {} };
+
+  // ---- munkaszüneti napok (Mt. 102. §) + áthelyezések (évenkénti NGM-rendelet) ----
+  function easter(y) { // Gauss–Meeus
+    const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25),
+      g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+      l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(y, mo - 1, da);
+  }
+  // Áthelyezett munkanapok évenként (az évenkénti NGM-rendelet szerint): dátum → [fajta, a párja].
+  // A beépített adatot a havi naptárfigyelő a közös adatbázis „calendar/updates” dokumentumával felülírhatja
+  // (évenként: { decree, swaps }), és új állandó munkaszüneti napot is felvehet (holidays: [{ md, id, from, name, desc }]).
+  const BUILTIN_YEARS = {
+    2026: { decree: "10/2025", swaps: {
+      "2026-01-02": ["rest", "2026-01-10"], "2026-01-10": ["work", "2026-01-02"],
+      "2026-08-08": ["work", "2026-08-21"], "2026-08-21": ["rest", "2026-08-08"],
+      "2026-12-12": ["work", "2026-12-24"], "2026-12-24": ["rest", "2026-12-12"]
+    } }
+  };
+  let calUpdates = { years: {}, holidays: [] };
+  const yearCal = y => calUpdates.years?.[y] || BUILTIN_YEARS[y] || null;
+  const swapOf = iso => yearCal(iso.slice(0, 4))?.swaps?.[iso];
+  /** Nyelvenkénti szöveg a figyelő által felvett napokhoz ({ hu, en, pl } vagy egyszerű szöveg). */
+  const pick = v => (v && typeof v === "object" ? v[lang] || v.hu : v) || "";
+  const extraOf = id => (calUpdates.holidays || []).find(h => h.id === id);
+  const dayName = id => L().days[id] || pick(extraOf(id)?.name) || id;
+  const dayDesc = id => pick(extraOf(id)?.desc) || L().desc[id] || "";
+  let holidayCache = {};
+  /** Az év munkaszüneti napjai: dátum → ünnep-azonosító (a felirat nyelvenként a L().days-ből). */
+  function holidays(y) {
+    if (holidayCache[y]) return holidayCache[y];
+    const map = {};
+    const add = (d, id) => { map[`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`] = id; };
+    [[0, 1, "newyear"], [2, 15, "mar15"], [4, 1, "may1"], [7, 20, "aug20"], [9, 23, "oct23"],
+      [10, 1, "allsaints"], [11, 25, "xmas"], [11, 26, "xmas"]].forEach(([m, d, id]) => add(new Date(y, m, d), id));
+    const e = easter(y);
+    const shift = n => new Date(e.getFullYear(), e.getMonth(), e.getDate() + n);
+    add(shift(-2), "goodfri"); add(e, "easter"); add(shift(1), "eastermon"); add(shift(49), "pentecost"); add(shift(50), "pentecostmon");
+    (calUpdates.holidays || []).forEach(h => {
+      const [m, d] = String(h.md || "").split("-").map(Number);
+      if (m && d && y >= (Number(h.from) || 0) && (!h.until || y <= Number(h.until))) add(new Date(y, m - 1, d), h.id);
+    });
+    return (holidayCache[y] = map);
+  }
+  // Nem munkaszüneti, de jelölt napok (ha nem esnek ünnepre vagy áthelyezett napra).
+  const SPECIAL_DAYS = { "12-24": "xmaseve", "12-31": "nye" };
+  const shortDate = iso => { const [, m, d] = iso.split("-").map(Number); return L().shortDate(L().monthsShort[m - 1], d); };
+  /** Rövid magyarázat a különleges napok feliratához (buboréktipp). */
+  function describe(iso, info) {
+    const swap = swapOf(iso);
+    const base = info.id ? dayDesc(info.id) : "";
+    const dec = L().decree(yearCal(iso.slice(0, 4))?.decree || "?");
+    if (swap?.[0] === "rest") return `${base ? base + " " : ""}${L().swapRest(shortDate(swap[1]), dec)}`;
+    if (swap?.[0] === "work") return L().swapWork(shortDate(swap[1]), dec);
+    return base;
+  }
+  function dayInfo(date) {
+    const iso = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const holiday = holidays(date.getFullYear())[iso];
+    const swap = swapOf(iso);
+    const weekend = date.getDay() === 0 || date.getDay() === 6;
+    const names = L().days;
+    if (holiday) return { rest: true, holiday: true, label: dayName(holiday), id: holiday };
+    const special = SPECIAL_DAYS[iso.slice(5)];
+    if (swap?.[0] === "rest") return { rest: true, holiday: true, label: special ? `${dayName(special)} · ${names.swapRest}` : names.swapRest, id: special };
+    if (swap?.[0] === "work") return { rest: false, holiday: true, label: names.swapWork };
+    if (special) return { rest: weekend, holiday: false, special: true, label: dayName(special), id: special };
+    return { rest: weekend, holiday: false, label: "" };
+  }
+
+  // ---- számítás ----
+  function compute() {
+    const data = monthData();
+    const last = new Date(year, month + 1, 0).getDate();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    let total = 0;
+    const open = [];
+    // Ajánlás: munkanapokra; ünnepre és vasárnapra soha; szombatra csak ha be van kapcsolva, és csak a megadott
+    // számú szombatig a hónapban (a már ledolgozott szombatok beleszámítanak).
+    const isPlainSaturday = date => date.getDay() === 6 && dayInfo(date).rest && !dayInfo(date).holiday;
+    let saturdaysLeft = state.settings.weekend ? Math.max(0, Number(state.settings.saturdays) || 0) : 0;
+    for (let d = 1; d <= last; d += 1) {
+      const v = data.days[pad(d)];
+      if (typeof v === "number" && v > 0 && isPlainSaturday(new Date(year, month, d))) saturdaysLeft -= 1;
+    }
+    for (let d = 1; d <= last; d += 1) {
+      const v = data.days[pad(d)];
+      if (typeof v === "number") { total += v; continue; }
+      const date = new Date(year, month, d);
+      if (date < startOfToday) continue; // elmúlt, kitöltetlen nap: nem kap ajánlást
+      if (dayInfo(date).rest) {
+        if (!isPlainSaturday(date) || saturdaysLeft <= 0) continue;
+        saturdaysLeft -= 1;
+      }
+      open.push(d);
+    }
+    const goal = effectiveGoal();
+    const left = Math.max(0, goal - total);
+    const avg = state.settings.rec && goal > 0 && left > 0 && open.length ? left / open.length : 0;
+    return { total, goal, left, open: new Set(open), avg };
+  }
+
+  const ft = n => `${Math.round(n).toLocaleString(L().locale)} Ft`;
+  /** Bérparaméterek a kiválasztott hónapra (az órabér a hónap munkanapjaiból). */
+  function payFor() {
+    const pay = { ...PAY_DEFAULTS, ...state.settings.pay };
+    const workdays = monthWorkdays();
+    const hourly = pay.base / (workdays * 8);
+    return { ...pay, workdays, hourly, otRate: hourly * pay.rate / 100, extra: Number(monthData().extra) || 0 };
+  }
+  /** Nettó bér célból a szükséges túlóra (fél órára felfelé kerekítve). */
+  function hoursForNet(netTarget) {
+    const p = payFor();
+    if (!(p.otRate > 0)) return 0;
+    const grossNeeded = grossForNet(netTarget) - p.base - p.extra;
+    return grossNeeded <= 0 ? 0 : Math.ceil((grossNeeded / p.otRate) * 2 - 1e-6) / 2; // a felezéses keresés apró túllövése ne kerekítsen felfelé
+  }
+  /** A hónap óracélja: közvetlenül megadva, vagy a nettó bér célból számolva. */
+  function effectiveGoal() {
+    const data = monthData();
+    if (data.mode === "net") return data.netGoal ? hoursForNet(data.netGoal) : 0;
+    return Number(data.goal) || 0;
+  }
+  /** A hónap munkanapjai a naptár szerint (ez a bérlap „Osztószám”-a): hétköznap, ünnep és pihenőnap nélkül, ledolgozós szombattal. */
+  function monthWorkdays() {
+    const last = new Date(year, month + 1, 0).getDate();
+    let n = 0;
+    for (let d = 1; d <= last; d += 1) if (!dayInfo(new Date(year, month, d)).rest) n += 1;
+    return n || 1;
+  }
+  // Levonások: TB-járulék a teljes bruttóra; SZJA – adókedvezménytől függően – részben vagy egészben.
+  // Bővíthető: új kedvezmény = új RELIEFS-elem (taxable: bruttó, év → az SZJA alapja).
+  const TB_RATE = 0.185, SZJA_RATE = 0.15;
+  const U25_CAPS = { 2026: 715765 }; // a tárgyévet megelőző július bruttó átlagkeresete (KSH)
+  const u25Cap = y => {
+    const own = Number(state.settings.pay?.caps?.[y]);
+    if (own > 0) return own;
+    const known = Object.keys(U25_CAPS).map(Number).filter(k => k <= y).sort((a, b) => b - a)[0];
+    return U25_CAPS[known ?? Math.min(...Object.keys(U25_CAPS).map(Number))];
+  };
+  const RELIEFS = {
+    none: { label: "reliefNone", taxable: gross => gross },
+    u25: { label: "reliefU25", taxable: (gross, y) => Math.max(0, gross - u25Cap(y)) }
+  };
+  const reliefOf = () => RELIEFS[state.settings.pay?.relief] || RELIEFS.none;
+  const netOf = gross => gross - gross * TB_RATE - reliefOf().taxable(gross, year) * SZJA_RATE;
+  /** Az a bruttó, amelyből a kért nettó kijön (a nettó a bruttóban szakaszonként lineáris és szigorúan nő → felezéses keresés). */
+  function grossForNet(net) {
+    let lo = 0, hi = Math.max(1, net) * 3;
+    for (let i = 0; i < 60; i += 1) { const mid = (lo + hi) / 2; if (netOf(mid) < net) lo = mid; else hi = mid; }
+    return hi;
+  }
+  function renderPay(c) {
+    const { workdays, hourly, otRate, base, extra } = payFor();
+    const otGross = h => h * otRate;
+    const net = h => netOf(base + extra + otGross(h));
+    const otNet = h => net(h) - net(0);
+    const data = monthData();
+    const derived = $("goalDerived");
+    derived.hidden = data.mode !== "net";
+    if (!(base > 0)) { // önálló alkalmazás első indítása: még nincs alapbér
+      $("hourly").textContent = L().noBase;
+      if (data.mode === "net") derived.textContent = L().noBase;
+      ["netNow", "netGoal"].forEach(id => { $(id).textContent = "–"; });
+      ["otNow", "otGoal"].forEach(id => { $(id).textContent = ""; });
+      $("nowLabel").textContent = L().nowLabel(hu(c.total));
+      return;
+    }
+    if (data.mode === "net") {
+      derived.innerHTML = !data.netGoal ? L().derivedEmpty
+        : c.goal ? L().derivedNeed(hu(c.goal), workdays, ft(otRate)) : L().derivedNone;
+    }
+    $("hourly").textContent = L().hourly(workdays, ft(hourly), ft(otRate));
+    $("nowLabel").textContent = L().nowLabel(hu(c.total));
+    $("netNow").textContent = ft(net(c.total));
+    $("otNow").textContent = c.total ? L().otPart(ft(otNet(c.total))) : L().otNone;
+    const goalHours = Math.max(c.goal, c.total);
+    $("netGoal").textContent = c.goal ? ft(net(goalHours)) : "–";
+    $("otGoal").textContent = c.goal ? L().goalLine(hu(goalHours), ft(otNet(goalHours))) : L().setGoal;
+  }
+
+  function renderSummary(c) {
+    renderPay(c);
+    $("total").textContent = hu(c.total);
+    $("of").textContent = c.goal ? L().of(hu(c.goal)) : L().ofNone;
+    const pct = c.goal ? Math.min(100, (c.total / c.goal) * 100) : 0;
+    $("pct").textContent = c.goal ? `${Math.round((c.total / c.goal) * 100)}%` : "";
+    $("bar").querySelector("i").style.width = `${pct}%`;
+    $("bar").classList.toggle("is-done", c.goal > 0 && c.total >= c.goal);
+    const remain = $("remain");
+    if (!c.goal) remain.textContent = L().remainNoGoal;
+    else if (c.total >= c.goal) remain.innerHTML = L().remainDone(hu(c.total - c.goal));
+    else if (!c.open.size) remain.innerHTML = L().remainNoDays(hu(c.left));
+    else remain.innerHTML = L().remainOpen(hu(c.left), c.open.size, hu(c.left / c.open.size));
+    $("weekendRow").classList.toggle("is-off", !state.settings.rec);
+    $("optWeekend").disabled = !state.settings.rec;
+    $("satCount").disabled = !state.settings.rec;
+  }
+
+  /** Csak a számokat frissíti (a beviteli mezőkhöz nem nyúl, így gépelés közben sem ugrik a fókusz). */
+  function refreshNumbers() {
+    const c = compute();
+    renderSummary(c);
+    const data = monthData();
+    document.querySelectorAll(".day input").forEach(input => {
+      const d = Number(input.dataset.day);
+      input.placeholder = c.avg && c.open.has(d) ? hu(c.avg) : "";
+      input.classList.toggle("has-value", typeof data.days[pad(d)] === "number");
+    });
+    document.querySelectorAll(".week").forEach(week => {
+      const sum = [...week.querySelectorAll(".day input")].reduce((s, input) => s + (data.days[pad(Number(input.dataset.day))] || 0), 0);
+      week.querySelector(".sum").textContent = `${hu(sum)} ${L().sumUnit}`;
+    });
+  }
+
+  function renderWeeks() {
+    const box = $("weeks");
+    const last = new Date(year, month + 1, 0).getDate();
+    const data = monthData();
+    const weeks = [];
+    let current = null;
+    for (let d = 1; d <= last; d += 1) {
+      const date = new Date(year, month, d);
+      if (!current || date.getDay() === 1) { current = []; weeks.push(current); }
+      current.push(date);
+    }
+    const isToday = date => date.toDateString() === today.toDateString();
+    box.replaceChildren(...weeks.map((days, index) => {
+      const card = document.createElement("section");
+      card.className = "card week";
+      const first = days[0].getDate(), lastDay = days[days.length - 1].getDate();
+      card.innerHTML = `<div class="week-head"><h2>${L().week(index + 1, L().monthsShort[month], first, lastDay)}</h2><span class="sum"></span></div>`;
+      days.forEach(date => {
+        const info = dayInfo(date);
+        const d = date.getDate();
+        const row = document.createElement("div");
+        row.className = "day" + (info.rest ? " is-rest" : "") + (isToday(date) ? " is-today" : "");
+        row.dataset.dow = String(date.getDay());
+        if (info.label) row.classList.add("is-special");
+        row.innerHTML = `<div class="dn"><b>${d}</b><span>${L().weekdays[date.getDay()]}</span></div><div class="tag${info.label ? " is-holiday" : ""}"></div>` +
+          `<input type="number" inputmode="decimal" min="0" max="24" step="0.5" data-day="${d}" id="d${d}">`;
+        const tag = row.querySelector(".tag");
+        tag.textContent = info.label;
+        tag.dataset.today = L().today;
+        if (info.label) {
+          tag.dataset.tip = describe(`${year}-${pad(month + 1)}-${pad(d)}`, info);
+          tag.setAttribute("role", "button");
+          tag.tabIndex = 0;
+        }
+        const input = row.querySelector("input");
+        input.setAttribute("aria-label", L().dayAria(year, L().months[month], d));
+        const v = data.days[pad(d)];
+        if (typeof v === "number") input.value = String(v);
+        input.addEventListener("input", () => onDayInput(d, input));
+        card.appendChild(row);
+      });
+      return card;
+    }));
+    refreshNumbers();
+  }
+
+  function onDayInput(d, input) {
+    const key = keyOf(year, month);
+    const data = state.months[key] = { goal: 0, days: {}, ...state.months[key] };
+    data.days = { ...data.days };
+    const raw = input.value.trim().replace(",", ".");
+    const num = Number(raw);
+    if (raw === "" || !Number.isFinite(num) || num < 0) delete data.days[pad(d)];
+    else data.days[pad(d)] = Math.round(num * 2) / 2; // fél órás lépés
+    refreshNumbers();
+    save(key);
+  }
+
+  // ---- MOHU visszaváltási számláló (db × 50 Ft): a beállításokkal együtt mentve, minden eszközön ugyanaz ----
+  const MOHU_OPEN_KEY = "tulora.mohuOpen";
+  let mohuUndo = null;
+  const mohuCount = () => Math.max(0, Math.min(999, Math.round(Number(state.settings.mohu) || 0)));
+  function renderMohu() {
+    const open = !$("mohuPanel").hidden;
+    if (document.activeElement !== $("mohuValue")) $("mohuValue").value = String(mohuCount());
+    $("mohuSum").querySelector("b").textContent = ft(mohuCount() * 50);
+    $("mohuSum").querySelector("small").textContent = L().mohuEach(mohuCount());
+    fitMohuSum();
+    $("mohuReset").textContent = mohuUndo ? L().mohuUndo : L().mohuReset;
+    $("mohuReset").classList.toggle("is-undo", Boolean(mohuUndo));
+    $("mohuFab").hidden = open;
+    $("mohuFab").setAttribute("aria-expanded", String(open));
+    document.documentElement.classList.toggle("mohu-open", open);
+  }
+  // Az összeg egy sorban marad: ha nem fér ki (pl. 5 jegyű összegnél), a betűméret épp annyit zsugorodik, amennyi kell.
+  function fitMohuSum() {
+    const box = $("mohuSum");
+    for (const [el, base] of [[box.querySelector("b"), 24], [box.querySelector("small"), 12]]) {
+      el.style.fontSize = "";
+      const room = box.clientWidth, need = el.scrollWidth;
+      if (room && need > room) el.style.fontSize = Math.floor(base * room / need * 2) / 2 + "px";
+    }
+  }
+  addEventListener("resize", () => { if (!$("mohuPanel").hidden) fitMohuSum(); });
+  function setMohu(value) {
+    state.settings.mohu = Math.max(0, Math.min(999, Math.round(Number(value) || 0)));
+    renderMohu();
+    clearTimeout(timers.settings);
+    timers.settings = setTimeout(() => { delete timers.settings; saveSettings(); }, 400);
+  }
+  function openMohu(open) {
+    $("mohuPanel").hidden = !open;
+    try { localStorage.setItem(MOHU_OPEN_KEY, open ? "1" : "0"); } catch (_) {}
+    renderMohu();
+    (open ? $("mohuClose") : $("mohuFab")).focus({ preventScroll: true });
+  }
+
+  function render() {
+    applyLang();
+    $("year").value = String(year);
+    $("month").value = String(month);
+    const md = monthData();
+    const netMode = md.mode === "net";
+    $("modeHours").setAttribute("aria-pressed", String(!netMode));
+    $("modeNet").setAttribute("aria-pressed", String(netMode));
+    $("goalSub").textContent = netMode ? L().goalSubNet : L().goalSubHours;
+    $("goalUnit").textContent = netMode ? "Ft" : L().unitHours;
+    $("goal").step = netMode ? "10000" : "0.5";
+    $("goal").max = netMode ? "5000000" : "300";
+    const g = netMode ? md.netGoal : md.goal;
+    if (document.activeElement !== $("goal")) $("goal").value = g ? String(g) : "";
+    $("optRec").checked = state.settings.rec;
+    $("optWeekend").checked = state.settings.weekend;
+    applyTheme(state.settings.theme);
+    renderMohu();
+    document.documentElement.classList.toggle("sat-on", Boolean(state.settings.satColor));
+    document.documentElement.classList.toggle("sun-on", Boolean(state.settings.sunColor));
+    $("satPick").hidden = !state.settings.weekend;
+    $("satCount").value = String(state.settings.saturdays ?? 2);
+    const pay = { ...PAY_DEFAULTS, ...state.settings.pay };
+    [["pBase", "base"], ["pRate", "rate"]].forEach(([id, key]) => {
+      if (document.activeElement !== $(id)) $(id).value = String(pay[key]);
+    });
+    $("pRelief").replaceChildren(...Object.entries(RELIEFS).map(([id, r]) => new Option(L()[r.label], id)));
+    $("pRelief").value = RELIEFS[pay.relief] ? pay.relief : "none";
+    $("capRow").hidden = $("pRelief").value !== "u25";
+    $("capLabel").textContent = L().capLabel(year);
+    if (document.activeElement !== $("pCap")) $("pCap").value = String(u25Cap(year));
+    if (document.activeElement !== $("pExtra")) $("pExtra").value = monthData().extra ? String(monthData().extra) : "";
+    renderWeeks();
+  }
+
+  // ---- naptárfigyelő: a havi ellenőrzés eredménye egyszer felugrik (a közös „notices” gyűjtemény legújabb eleme) ----
+  const NOTICE_KEY = "tulora.noticeSeen";
+  let latestNotice = null, shownNotice = null, settingsLoaded = false;
+  function seenNotice() {
+    let local = "";
+    try { local = localStorage.getItem(NOTICE_KEY) || ""; } catch (_) {}
+    const synced = String(state.settings.noticeSeen || "");
+    return local > synced ? local : synced;
+  }
+  function fillNotice(n) {
+    $("noticeDate").textContent = n.date ? new Date(`${n.date}T12:00:00`).toLocaleDateString(L().locale, { year: "numeric", month: "long", day: "numeric" }) : "";
+    $("noticeTitle").textContent = pick(n.title);
+    $("noticeBody").textContent = pick(n.body);
+    const change = pick(n.change);
+    $("noticeChange").textContent = change;
+    $("noticeChange").hidden = !change;
+  }
+  function maybeShowNotice() {
+    if (!latestNotice || !settingsLoaded || shownNotice || String(latestNotice.id) <= seenNotice()) return;
+    shownNotice = latestNotice;
+    fillNotice(shownNotice);
+    $("noticeBack").hidden = false;
+    $("noticeOk").focus();
+  }
+  function closeNotice() {
+    if (!shownNotice) return;
+    const id = String(shownNotice.id);
+    shownNotice = null;
+    $("noticeBack").hidden = true;
+    try { localStorage.setItem(NOTICE_KEY, id); } catch (_) {}
+    if (id > String(state.settings.noticeSeen || "")) { state.settings.noticeSeen = id; saveSettings(); }
+  }
+
+  // ---- mentés: a Claude-fiókhoz kötött, privát adatbázis (minden eszközön ugyanaz), tartalékként ez a böngésző ----
+  const timers = {};
+  function save(key) {
+    clearTimeout(timers[key]);
+    timers[key] = setTimeout(() => { void backend?.saveMonth(key, state.months[key]); }, 600);
+  }
+  function saveSettings() { void backend?.saveSettings(state.settings); }
+  /** A fiókból vagy a tárolóból érkező nyelv érvényesítése (a helyi másolatot is frissíti a villanásmentes induláshoz). */
+  function adoptLang(next) {
+    if (!LANGS.includes(next)) return;
+    lang = next;
+    state.settings.lang = next;
+    try { localStorage.setItem(LANG_KEY, next); } catch (_) {}
+  }
+
+  // Önálló (fiók nélküli) futás: a naptárfrissítést és a figyelő tájékoztatóját egy nyilvános fájlból tölti le
+  // (csak ünnepnap-adat, személyes adat nincs benne); a legutóbbi letöltött példány offline is megmarad.
+  const CAL_URL = "https://raw.githubusercontent.com/KTomi-HU/tulora-app/main/calendar.json";
+  const CAL_CACHE = "tulora.calendar";
+  function applyCalendar(data) {
+    calUpdates = { years: {}, holidays: [], ...data };
+    holidayCache = {};
+    latestNotice = data.notice?.id ? data.notice : latestNotice;
+  }
+  function loadCalendar() {
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CAL_CACHE) || "null"); } catch (_) {}
+    if (cached) applyCalendar(cached);
+    fetch(CAL_URL, { cache: "no-cache" }).then(r => (r.ok ? r.json() : null)).then(data => {
+      if (!data || typeof data !== "object") return;
+      try {
+        // Első letöltéskor a korábbi tájékoztató nem ugrik fel (az új felhasználónak az csak zaj).
+        if (!cached && data.notice?.id && !localStorage.getItem(NOTICE_KEY)) localStorage.setItem(NOTICE_KEY, String(data.notice.id));
+        localStorage.setItem(CAL_CACHE, JSON.stringify(data));
+      } catch (_) {}
+      applyCalendar(data);
+      if (!document.activeElement?.matches?.("input, textarea")) render(); else refreshNumbers();
+      maybeShowNotice();
+    }).catch(() => {});
+  }
+  function localBackend() {
+    try { Object.assign(state, JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}")); } catch (_) {}
+    adoptLang(state.settings.lang || lang);
+    settingsLoaded = true;
+    loadCalendar();
+    const write = () => { try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ months: state.months, settings: state.settings })); } catch (_) {} };
+    return { local: true, saveMonth: write, saveSettings: write };
+  }
+  async function connect() {
+    try {
+      const claude = window.claude;
+      if (!claude?.use) return null;
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      const uid = db && user ? await user.id() : null;
+      if (!uid) return null;
+      const root = db.doc(`data/users/${uid}/tulora`);
+      const months = root.collection("months");
+      const pending = new Set(); // még el nem mentett hónapok: a visszhang ne írja felül a gépelést
+      months.onSnapshot(snap => {
+        let changed = false;
+        snap.docs.forEach(doc => {
+          if (pending.has(doc.id) || timers[doc.id]) return;
+          const next = doc.data() || {};
+          if (JSON.stringify(state.months[doc.id]) !== JSON.stringify(next)) { state.months[doc.id] = next; changed = true; }
+        });
+        if (changed && !document.activeElement?.matches?.(".day input, #goal")) render();
+      });
+      // A havi naptárfigyelő által frissített naptáradat és tájékoztatók (közös, csak a tulajdonos írhatja).
+      db.doc("calendar/updates").onSnapshot(snap => {
+        const next = snap.exists ? snap.data() || {} : {};
+        calUpdates = { years: {}, holidays: [], ...next };
+        holidayCache = {};
+        if (!document.activeElement?.matches?.("input")) render(); else refreshNumbers();
+      });
+      db.collection("notices").orderBy("date", "desc").limit(1).onSnapshot(snap => {
+        const doc = snap.docs[0];
+        latestNotice = doc ? { id: doc.id, ...doc.data() } : null;
+        maybeShowNotice();
+      });
+      root.onSnapshot(snap => {
+        settingsLoaded = true;
+        const s = snap.exists ? snap.data()?.settings : null;
+        if (s && !timers.settings && JSON.stringify(s) !== JSON.stringify(state.settings)) {
+          state.settings = { ...state.settings, ...s, pay: { ...PAY_DEFAULTS, ...s.pay } };
+          adoptLang(state.settings.lang || lang);
+          if (!document.activeElement?.matches?.("input")) render(); else refreshNumbers();
+        }
+        maybeShowNotice();
+      });
+      return {
+        local: false,
+        async saveMonth(key, data) {
+          delete timers[key];
+          pending.add(key);
+          try { await months.doc(key).set({ goal: Number(data.goal) || 0, days: data.days || {}, extra: Number(data.extra) || 0, mode: data.mode === "net" ? "net" : "hours", netGoal: Number(data.netGoal) || 0 }); }
+          finally { pending.delete(key); }
+        },
+        async saveSettings(settings) { await root.set({ settings }); }
+      };
+    } catch (_) { return null; }
+  }
+
+  // ---- vezérlők ----
+  for (let y = YEAR_MIN; y <= YEAR_MAX; y += 1) $("year").append(new Option(String(y), String(y)));
+  for (let i = 0; i < 12; i += 1) $("month").append(new Option("", String(i)));
+  for (let n = 1; n <= 5; n += 1) $("satCount").append(new Option("", String(n)));
+  $("year").addEventListener("change", () => { year = Number($("year").value); render(); });
+  $("month").addEventListener("change", () => { month = Number($("month").value); render(); });
+  $("goal").addEventListener("input", () => {
+    const key = keyOf(year, month);
+    const num = Number($("goal").value.replace(",", "."));
+    const value = Number.isFinite(num) && num > 0 ? num : 0;
+    const cur = { goal: 0, days: {}, ...state.months[key] };
+    state.months[key] = cur.mode === "net" ? { ...cur, netGoal: value } : { ...cur, goal: value };
+    refreshNumbers();
+    save(key);
+  });
+  // Cél módja: túlóra (óra) vagy elérni kívánt nettó bér (Ft) – hónaponként.
+  const setMode = mode => {
+    const key = keyOf(year, month);
+    state.months[key] = { goal: 0, days: {}, ...state.months[key], mode };
+    render();
+    save(key);
+  };
+  $("modeHours").addEventListener("click", () => setMode("hours"));
+  $("modeNet").addEventListener("click", () => setMode("net"));
+  // Egyszeri bruttó (pl. prémium): havonta külön, a hónap adataival mentve.
+  $("pExtra").addEventListener("input", () => {
+    const key = keyOf(year, month);
+    const num = Number($("pExtra").value.replace(",", "."));
+    state.months[key] = { goal: 0, days: {}, ...state.months[key], extra: Number.isFinite(num) && num > 0 ? num : 0 };
+    refreshNumbers();
+    save(key);
+  });
+  const savePaySoon = () => { clearTimeout(timers.settings); timers.settings = setTimeout(() => { delete timers.settings; saveSettings(); }, 600); };
+  $("pRelief").addEventListener("change", () => {
+    state.settings.pay = { ...PAY_DEFAULTS, ...state.settings.pay, relief: $("pRelief").value };
+    $("capRow").hidden = $("pRelief").value !== "u25";
+    refreshNumbers();
+    saveSettings();
+  });
+  // A mentes határ évente változik: a beírt érték csak a kiválasztott évre szól (üresen: a beépített érték).
+  $("pCap").addEventListener("input", () => {
+    const num = Number($("pCap").value);
+    const caps = { ...(state.settings.pay?.caps || {}) };
+    if (Number.isFinite(num) && num > 0 && num !== U25_CAPS[year]) caps[year] = num; else delete caps[year];
+    state.settings.pay = { ...PAY_DEFAULTS, ...state.settings.pay, caps };
+    refreshNumbers();
+    savePaySoon();
+  });
+  [["pBase", "base"], ["pRate", "rate"]].forEach(([id, key]) => {
+    $(id).addEventListener("input", () => {
+      const num = Number($(id).value.replace(",", "."));
+      if (!Number.isFinite(num) || num <= 0) return;
+      state.settings.pay = { ...PAY_DEFAULTS, ...state.settings.pay, [key]: num };
+      refreshNumbers();
+      clearTimeout(timers.settings);
+      timers.settings = setTimeout(() => { delete timers.settings; saveSettings(); }, 600);
+    });
+  });
+  $("optRec").addEventListener("change", () => { state.settings.rec = $("optRec").checked; refreshNumbers(); saveSettings(); });
+  $("optWeekend").addEventListener("change", () => { state.settings.weekend = $("optWeekend").checked; $("satPick").hidden = !state.settings.weekend; refreshNumbers(); saveSettings(); });
+  $("themeBtn").addEventListener("click", () => {
+    const order = ["auto", "light", "dark"];
+    state.settings.theme = order[(order.indexOf(state.settings.theme) + 1) % order.length];
+    applyTheme(state.settings.theme);
+    saveSettings();
+  });
+  // Rejtett nyelvváltó: a címre koppintva magyar → angol → lengyel → magyar (semmi vizuális jelzés).
+  $("brand").addEventListener("click", () => {
+    hideTip();
+    adoptLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]);
+    render();
+    saveSettings();
+  });
+  // Különleges nap felirata → buboréktipp (koppintásra nyílik/zárul; máshova koppintva vagy görgetéskor bezárul).
+  let tipFor = null;
+  function hideTip() { $("tip").hidden = true; tipFor = null; }
+  function showTip(tag) {
+    if (tipFor === tag) { hideTip(); return; }
+    const tip = $("tip");
+    tip.replaceChildren(Object.assign(document.createElement("b"), { textContent: tag.textContent }), document.createTextNode(tag.dataset.tip));
+    tip.hidden = false;
+    const r = tag.getBoundingClientRect();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    const left = Math.min(Math.max(16, r.left), window.innerWidth - w - 16);
+    const top = r.bottom + 8 + h < window.innerHeight ? r.bottom + 8 : Math.max(8, r.top - h - 8);
+    tip.style.left = `${left}px`; tip.style.top = `${top}px`;
+    tipFor = tag;
+  }
+  document.addEventListener("click", event => {
+    const tag = event.target.closest?.(".tag[data-tip]");
+    if (tag) showTip(tag); else if (!event.target.closest?.("#tip")) hideTip();
+  });
+  document.addEventListener("keydown", event => {
+    const tag = event.target.closest?.(".tag[data-tip]");
+    if (tag && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); showTip(tag); }
+    if (event.key === "Escape") hideTip();
+  });
+  window.addEventListener("scroll", hideTip, { passive: true });
+  // Szombat/vasárnap számjegyének színe: kattintásra ki-be, az összes azonos nevű napra.
+  $("weeks").addEventListener("click", event => {
+    const dn = event.target.closest(".dn");
+    const dow = dn?.closest(".day")?.dataset.dow;
+    if (dow !== "6" && dow !== "0") return;
+    const key = dow === "6" ? "satColor" : "sunColor";
+    state.settings[key] = !state.settings[key];
+    document.documentElement.classList.toggle(dow === "6" ? "sat-on" : "sun-on", state.settings[key]);
+    saveSettings();
+  });
+  $("noticeOk").addEventListener("click", closeNotice);
+  $("noticeBack").addEventListener("click", event => { if (event.target === $("noticeBack")) closeNotice(); });
+  document.addEventListener("keydown", event => { if (event.key === "Escape") closeNotice(); });
+  $("satCount").addEventListener("change", () => { state.settings.saturdays = Number($("satCount").value); refreshNumbers(); saveSettings(); });
+
+  // MOHU számláló vezérlői.
+  $("mohuFab").addEventListener("click", () => openMohu(true));
+  $("mohuClose").addEventListener("click", () => openMohu(false));
+  $("mohuPlus").addEventListener("click", () => setMohu(mohuCount() + 1));
+  $("mohuMinus").addEventListener("click", () => setMohu(mohuCount() - 1));
+  $("mohuValue").addEventListener("input", () => {
+    const input = $("mohuValue");
+    input.value = input.value.replace(/[^0-9]/g, "").slice(0, 3);
+    if (input.value !== "") setMohu(Number(input.value));
+  });
+  $("mohuValue").addEventListener("blur", () => { $("mohuValue").value = String(mohuCount()); });
+  // Nullázás: egy koppintás, utána 5 mp-ig ugyanott „Visszavonás”.
+  $("mohuReset").addEventListener("click", () => {
+    if (mohuUndo) { clearTimeout(mohuUndo.timer); const prev = mohuUndo.value; mohuUndo = null; setMohu(prev); return; }
+    if (!mohuCount()) return;
+    mohuUndo = { value: mohuCount(), timer: setTimeout(() => { mohuUndo = null; renderMohu(); }, 5000) };
+    setMohu(0);
+  });
+  const closeMohuAdd = (focus = false) => { $("mohuAmount").hidden = true; $("mohuAddBtn").hidden = false; if (focus) $("mohuAddBtn").focus(); };
+  $("mohuAddBtn").addEventListener("click", () => {
+    const input = $("mohuAmount");
+    $("mohuAddBtn").hidden = true; input.hidden = false; input.value = ""; input.removeAttribute("aria-invalid"); input.focus();
+  });
+  $("mohuAmount").addEventListener("input", () => { const input = $("mohuAmount"); input.value = input.value.replace(/[^0-9]/g, "").slice(0, 3); input.removeAttribute("aria-invalid"); });
+  $("mohuAmount").addEventListener("keydown", event => {
+    if (event.key === "Escape") { event.preventDefault(); closeMohuAdd(true); return; }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const amount = Number($("mohuAmount").value);
+    if (!$("mohuAmount").value || mohuCount() + amount > 999) { $("mohuAmount").setAttribute("aria-invalid", "true"); return; }
+    setMohu(mohuCount() + amount);
+    closeMohuAdd(true);
+  });
+  $("mohuAmount").addEventListener("blur", () => closeMohuAdd());
+  try { if (localStorage.getItem(MOHU_OPEN_KEY) === "1") $("mohuPanel").hidden = false; } catch (_) {}
+  // A függő beállításmentés ne vesszen el, ha az app háttérbe kerül vagy bezárul (pl. gyors koppintás után).
+  const flushSettings = () => { if (timers.settings) { clearTimeout(timers.settings); delete timers.settings; saveSettings(); } };
+  window.addEventListener("pagehide", flushSettings);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushSettings(); });
+
+  render();
+  // Megnyitáskor az aktuális hétre gördül (a tapadó haladássáv alá), ha a mostani hónap látszik.
+  requestAnimationFrame(() => {
+    const todayRow = document.querySelector(".day.is-today");
+    const week = todayRow?.closest(".week");
+    if (!week) return;
+    const top = week.getBoundingClientRect().top + window.scrollY - $("progress").offsetHeight - 16;
+    window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+  });
+  // ---- adatmentés (csak helyi tárolásnál): az összes adat egy szövegben, vágólapon át ----
+  const openBackup = () => {
+    if (!backend?.local) return;
+    $("bakData").value = JSON.stringify({ app: "tulora", v: 1, months: state.months, settings: state.settings });
+    $("bakStatus").textContent = "";
+    $("bakBack").hidden = false;
+  };
+  $("store").addEventListener("click", openBackup);
+  $("store").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openBackup(); } });
+  $("bakClose").addEventListener("click", () => { $("bakBack").hidden = true; });
+  $("bakCopy").addEventListener("click", async () => {
+    const box = $("bakData");
+    box.value = JSON.stringify({ app: "tulora", v: 1, months: state.months, settings: state.settings });
+    try { await navigator.clipboard.writeText(box.value); } catch (_) { box.select(); document.execCommand("copy"); }
+    $("bakStatus").textContent = L().bakCopied;
+  });
+  $("bakLoad").addEventListener("click", () => {
+    let data = null;
+    try { data = JSON.parse($("bakData").value.trim()); } catch (_) {}
+    if (!data || data.app !== "tulora" || typeof data.months !== "object") { $("bakStatus").textContent = L().bakBad; return; }
+    if (!confirm(L().bakConfirm)) return;
+    state.months = data.months || {};
+    state.settings = { ...state.settings, ...data.settings, pay: { ...PAY_DEFAULTS, ...data.settings?.pay } };
+    adoptLang(state.settings.lang || lang);
+    Object.keys(state.months).forEach(key => backend.saveMonth(key, state.months[key]));
+    saveSettings();
+    applyLang();
+    render();
+    $("bakStatus").textContent = L().bakDone;
+  });
+  // A tapadó sáv árnyékot kap, amikor már a tetején ül.
+  const markStuck = () => $("progress").classList.toggle("is-stuck", $("progress").getBoundingClientRect().top <= 1 && window.scrollY > 0);
+  window.addEventListener("scroll", markStuck, { passive: true });
+  (async () => {
+    backend = await connect();
+    if (!backend) backend = localBackend();
+    $("store").classList.toggle("is-local", backend.local && !NATIVE);
+    $("store").classList.toggle("is-device", backend.local && NATIVE);
+    $("store").classList.toggle("can-backup", backend.local);
+    if (backend.local) { $("store").setAttribute("role", "button"); $("store").tabIndex = 0; }
+    render();
+  })();
+})();
+</script>
